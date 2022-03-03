@@ -1,0 +1,12 @@
+.msgInfo-page {
+    display: grid;
+    grid-template-columns: 1fr 6fr;
+}
+
+.header {
+    font-weight: bold;
+}
+
+.msgInfo-page div {
+    margin: 1ex;
+}

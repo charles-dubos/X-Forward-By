@@ -1,0 +1,33 @@
+{
+    "manifest_version": 2,
+    "name": "Basic infos",
+    "description": "Extension to show basic infos of a selected message",
+    "version": "1.0",
+    "author": "C. DUBOS",
+    "applications": {
+        "gecko": {
+            "id": "charles.dubos@gmail.com",
+            "strict_min_version": "78.0"
+        }
+    },
+    "browser_action": {
+        "default_popup": "msgInfos/msgInfo.html",
+        "default_title": "i",
+        "default_icon" : "images/msgInfo.png"
+    },
+    "message_display_action": {
+        "default_popup": "msgInfos/msgInfo.html",
+        "default_title": "Basic infos",
+        "default_icon" : "images/msgInfo.png"
+    },
+    "permissions": [
+        "messagesRead"
+    ],
+    "icons": {
+        "64": "images/msgInfo.png",
+        "32": "images/msgInfo_32px.png",
+        "16": "images/msgInfo_16px.png"
+    }
+}
+
+

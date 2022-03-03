@@ -1,0 +1,12 @@
+.fwd_signed-page {
+    display: grid;
+    grid-template-columns: 1fr 6fr;
+}
+
+.header {
+    font-weight: bold;
+}
+
+.fwd_signed-page div {
+    margin: 1ex;
+}
