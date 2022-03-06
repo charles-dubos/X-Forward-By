@@ -11,14 +11,15 @@
         }
     },
     "browser_action": {
-        "default_popup": "src/msgInfo.html",
-        "default_title": "i",
-        "default_icon" : "images/msgInfo.png"
+        "default_title": "Message Infos",
+        "default_icon" : "images/msgInfo.png",
+        "default_label": "",
+        "default_popup": "src/msgInfo.html"
     },
     "message_display_action": {
-        "default_popup": "src/msgInfo.html",
-        "default_title": "Message infos",
-        "default_icon" : "images/msgInfo.png"
+        "default_title": "Message Infos",
+        "default_icon" : "images/msgInfo.png",
+        "default_popup": "src/msgInfo.html"
     },
     "permissions": [
         "messagesRead"
