@@ -1,23 +1,23 @@
 {
     "manifest_version": 2,
-    "name": "Basic infos",
-    "description": "Extension to show basic infos of a selected message",
+    "name": "messageInfos",
+    "description": "Extension to show the SMTP headers of a selected message",
     "version": "1.0",
     "author": "C. DUBOS",
     "applications": {
         "gecko": {
-            "id": "charles.dubos@gmail.com",
+            "id": "charles.dubos@telecom-paris.fr",
             "strict_min_version": "78.0"
         }
     },
     "browser_action": {
-        "default_popup": "msgInfos/msgInfo.html",
+        "default_popup": "src/msgInfo.html",
         "default_title": "i",
         "default_icon" : "images/msgInfo.png"
     },
     "message_display_action": {
-        "default_popup": "msgInfos/msgInfo.html",
-        "default_title": "Basic infos",
+        "default_popup": "src/msgInfo.html",
+        "default_title": "Message infos",
         "default_icon" : "images/msgInfo.png"
     },
     "permissions": [
@@ -29,5 +29,3 @@
         "16": "images/msgInfo_16px.png"
     }
 }
-
-

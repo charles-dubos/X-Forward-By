@@ -323,3 +323,9 @@ Pour les ajouter sur les Thunderbird:
 > 2. Ne pas oublier le sudo `useradd -aG vboxsf <user>`
 > 3. Puis `sudo reboot`
 
+
+
+
+##### Installation extension TDB
+
+> ToDo

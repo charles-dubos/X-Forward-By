@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "Forward signed MSG",
-    "description": "Extension to forward a message preserving its signature",
+    "description": "Extension to see and forward a message preserving its signature",
     "version": "1.0",
     "author": "C. DUBOS",
     "applications": {
@@ -9,6 +9,11 @@
             "id": "charles.dubos@gmail.com",
             "strict_min_version": "78.0"
         }
+    },
+    "background": {
+        "scripts": [
+            "fwd_header/background.js"
+        ]
     },
     "browser_action": {
         "default_popup": "fwd_signed/fwd_signed.html",
