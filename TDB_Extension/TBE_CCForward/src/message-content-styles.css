@@ -1,0 +1,20 @@
+.DisplayXFB {
+    background-color: #f6f5f4;
+    border-color: #cdc7c2;
+    border-style: solid;
+    border-radius: 0.25rem;
+    border-width: 0.1rem;
+    color: black;
+    font-size: small;
+    padding: 0.25rem 0.5rem;
+    display: flex;
+}
+
+.BannerXFB {
+    flex-grow: 1;
+}
+
+.titleXFB {
+    color: #888888;
+    text-align: right;
+}

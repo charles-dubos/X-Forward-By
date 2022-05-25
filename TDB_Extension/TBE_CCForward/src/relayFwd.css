@@ -1,0 +1,20 @@
+.relayFwd-page {
+    background-color: #f6f5f4;
+    border-color: #cdc7c2;
+    border-style: solid;
+    border-width: 0.1rem;
+    color: black;
+    font-size: medium;
+    padding: 0.25rem 0.5rem;
+    display: flex;
+}
+
+.relayTo {
+    color: #888888;
+    text-align: right;
+}
+
+.relayBtn {
+    display: flex;
+    justify-content: center;
+}
