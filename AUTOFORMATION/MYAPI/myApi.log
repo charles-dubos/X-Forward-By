@@ -1,0 +1,160 @@
+DEBUG:2022-12-23 19:02:04,641	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:02:04,641	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:02:04,641	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:02:04,641	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:02:04,641	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:02:04,641	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:02:04,641	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:02:04,641	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:02:04,642	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:03:12,060	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:03:12,060	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:03:12,060	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:03:12,060	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:03:12,060	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:03:12,060	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:03:12,060	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:03:12,060	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:03:12,061	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:04:07,951	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:04:07,951	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:04:07,951	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:04:07,951	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:04:07,951	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:04:07,951	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:04:07,951	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:04:07,952	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:04:07,953	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:05:06,044	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:05:06,044	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:05:06,044	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:05:06,044	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:05:06,045	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:05:06,045	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:07:43,774	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:07:43,774	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:07:43,774	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:07:43,774	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:07:43,774	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:07:43,774	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:07:43,774	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:07:43,774	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:07:43,775	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:27:52,292	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:27:52,292	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:27:52,292	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:27:52,292	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:29:04,162	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:29:04,162	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:29:04,163	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:29:04,163	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:30:57,236	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:30:57,236	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:30:57,236	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:30:57,236	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:06,058	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:33:06,058	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:33:06,058	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:06,058	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:48,356	[myApi.py][<module>]	Logger loaded in myApi
+INFO:2022-12-23 19:33:48,356	[libIptv.py][__init__]	Loading channels from /home/these/Documents/1_RECHERCHES/GIT_DEVS/AUTOFORMATION/MYAPI/ressources/iptv.json
+DEBUG:2022-12-23 19:33:48,356	[libIptv.py][loadChannels]	1 channel(s) loaded
+DEBUG:2022-12-23 19:33:48,356	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:48,356	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:48,356	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:48,356	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:48,356	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:48,356	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:48,357	[libServers.py][loadFromDict]	Key pre-start loaded
+DEBUG:2022-12-23 19:33:48,357	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:48,357	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:48,357	[libServers.py][loadFromDict]	Key services loaded
+DEBUG:2022-12-23 19:33:48,357	[libServers.py][loadFromDict]	Loading from dict
+DEBUG:2022-12-23 19:33:48,357	[libServers.py][loadFromDict]	Key name loaded
+DEBUG:2022-12-23 19:33:48,357	[libServers.py][loadFromDict]	Key services loaded

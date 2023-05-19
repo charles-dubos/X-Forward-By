@@ -1,0 +1,37 @@
+FROM alpine:latest
+
+LABEL description='This dockers implements a samba server based on alpine'
+LABEL author='Charles Dubos'
+LABEL license='GNUv3'
+LABEL credits='Charles Dubos'
+LABEL version="2022.001"
+LABEL maintainer='Charles Dubos'
+LABEL email='pi.dubs@sfr.fr'
+LABEL status='Development'
+
+RUN apk update &&\
+    apk add samba &&\
+    mkdir /media/storage &&\
+    chmod 0777 /media/storage &&\
+    adduser -S smb_user
+
+COPY smb.conf /etc/samba/smb.conf
+
+VOLUME SHARE /mnt/
+
+USER smb_user
+
+CMD ['rc-service', 'samba', 'start']
+
+EXPOSE 139 445
+
+# EXPOSE :
+# RUN build process
+# ADD copy to docker
+# ENV env variables
+# CMD command to run at docker run (one single instruction)
+# ARG build-time cmd-line arguments
+# WORKDIR
+# VOLUME allows access to mounted dir
+
+

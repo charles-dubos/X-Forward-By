@@ -1,0 +1,22 @@
+[
+    {
+        "populated":true,
+        "name":"TF1",
+        "picture":"",
+        "masked":false,
+        "content":[
+            {
+                "type":"Direct",
+                "url":""
+            },
+            {
+                "type":"Replay",
+                "url":""
+            },
+            {
+                "type":"VOD",
+                "url":""
+            }
+        ]
+    }
+]

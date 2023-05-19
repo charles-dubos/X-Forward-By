@@ -1,0 +1,32 @@
+{
+    "global":{
+        "logpath":"myApi.log",
+        "loglevel":"DEBUG"
+    },
+    "iptv":{
+        "channels_path":"ressources/iptv.json",
+        "allowed_channel_types":[
+            "Direct", "Replay", "VOD"
+        ]
+    },
+    "servers":[
+        {
+            "name":"Serveur de fichiers Samba",
+            "services":["smbd"]
+        },
+        {
+            "name":"MiniDLNA",
+            "services":["minidlna"],
+            "pre-start":["sudo chown pi:pi /var/log/minidlna.log"]
+        },
+        {
+            "name":"Transmission",
+            "services":["transmission-daemon"]
+        },
+        {
+            "name":"Serveur SSH",
+            "services":["sshd"]
+        }
+    ]
+}
+
