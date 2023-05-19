@@ -356,9 +356,23 @@ namespace inbox {
 # Création du socket d'utilisation de l'authentification Dovecot dans postfix
 service auth {
   unix_listener /var/spool/postfix/private/auth {
-    mode = 0660
+    mode = 0600
     user = postfix
     group = postfix
+  }
+}
+
+# Service de statistiques (obligatoire)
+service stats {
+  unix_listener stats-reader {
+    user = vmail
+    group = vmail
+    mode = 0660
+  }
+  unix_listener stats-writer {
+    user = vmail
+    group = vmail
+    mode = 0660
   }
 }
 ```
@@ -383,6 +397,7 @@ Quelques options utiles à ajouter au /etc/postfix/main.cf:
 
 ##### Contrôler l'accès SMTP
 - `smtpd_helo_required = yes` => impose un helo/ehlo avant toute connexion SMTP.
+
   > On peut également s'assurer que le ehlo est conforme à la rfc (du moins d'un point de vue syntaxique) avec les configurations:
   > ``` squidconf
   > smtpd_helo_restrictions =
@@ -439,10 +454,6 @@ iface enp0s3 inet dhcp
 ```bash 
 sudo systemctl restart networking
 ```
-
-
-
-
 
 
 ##### Ajout des certificats S/MIME
@@ -840,16 +851,18 @@ sudo opendkim-testkey -d domainX.loc -s mail -vvv
 
 Il s'agit maintenant d'ajouter DKIM au serveur MTA *Postfix*.
 
-On exécute à cet effet la commande suivante pour ajouter les lignes en question à la conf postfix :
-```bash
-cat <<EOF | sudo tee -a /etc/postfix/main.cf
-milter_default_action = accept
-smtpd_milters = local:opendkim/opendkim.sock
-non_smtpd_milters = $smtpd_milters
-EOF
-```
+1. On ajoute postfix au groupe opendkim: `sudo adduser postfix opendkim`
 
-Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
+2. On exécute à cet effet la commande suivante pour ajouter les lignes en question à la conf postfix :
+  ```bash
+  cat <<EOF | sudo tee -a /etc/postfix/main.cf
+  milter_default_action = accept
+  smtpd_milters = local:opendkim/opendkim.sock
+  non_smtpd_milters = $smtpd_milters
+  EOF
+  ```
+
+  Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
 
 #### Test
 
