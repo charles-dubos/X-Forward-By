@@ -972,4 +972,16 @@ Avec `delv` (résolveur DNSSEC), il faut shunter le passage par le *trusted anch
 
 ### Ajout de DMARC
 
+#### Ajout de la politique au DNS
+
+Il s'agit dans un premier temps de publier sur le DNS ce que l'on souhaite avoir comme retour et comme rapports des autres MTA utilisant DMARC (politique).
+
+A cet effet, on ajoute à la zone DNS (rappel: dans `/var/cache/bind/`) l'enregitrement TXT suivant:
+
+```squidconf
+_dmarc IN  TXT "v=DMARC1; p=reject; rua=mailto:postmaster@domainX.loc; pct=100; adkim=s; aspf=s"
+```
+
+#### Ajout de OpenDMARC à Postfix pour la génération des rapports
+
 
