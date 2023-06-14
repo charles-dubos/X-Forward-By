@@ -1,12 +1,12 @@
 # Tuto Simple Postfix architecture
 
-
 ## Objectif
 
 Monter une infra simple afin de faciliter la compréhension des protocoles de messagerie.
 L'infra se veut souple pour pouvoir progressivement permettre de se complexifier.
 
 ### Architecture globale
+
 ```mermaid
 flowchart TD
   A[Alice]
@@ -23,69 +23,69 @@ flowchart TD
   B---MTA2
 ```
 
-
-
 ## Mise sur pied initiale
 
-##### L'architecture de base est la suivante:
-- Alice: 1 VM sous Debian 11, avec MUA, dans le domain 1 
+### L'architecture de base est la suivante
+
+- Alice: 1 VM sous Debian 11, avec MUA, dans le domain 1
 - Bob: 1 VM sous Debian 11, avec MUA, MSA différent de Alice (dans le domain 2)
 - Charlie: Optionnel, 1 VM sous Debian 11, avec MUA, MSA de Alice (dans le domain 1)
-- Mail domain 1: 1 VM sous Debian 11, avec serveur Postfix 
-- Mail domain 2: 1 VM sous Debian 11, avec serveur Postfix 
+- Mail domain 1: 1 VM sous Debian 11, avec serveur Postfix
+- Mail domain 2: 1 VM sous Debian 11, avec serveur Postfix
 - Gateway: passerelle internet/domain1/domain2
 
-##### Réseaux mis en place:
+### Réseaux mis en place
 
-Domaine | Machines | Réseau + masque | Remarques 
+Domaine | Machines | Réseau + masque | Remarques
  --- | --- | --- | ---
- Domain 1 | Mail(253), Alice(1), Charlie(2), Passerelle(254) | 192.168.1.0/24 | 
- Domain 2 | Mail(253), Bob(1), Passerelle(254) | 192.168.2.0/24 | 
- 
+ Domain 1 | Mail(253), Alice(1), Charlie(2), Passerelle(254) | 192.168.1.0/24 |
+ Domain 2 | Mail(253), Bob(1), Passerelle(254) | 192.168.2.0/24 |
 
 ## Protocole d'installation
 
 ### Montage de la passerelle
+
 La passerelle fournit:
+
 - Le lien internet pour les VMs des deux domaines
 - Le serveur DNS pour les deux domaines
 - Le serveur DHCP pour les deux domaines
 - Un moyen d'observer les échanges entre les machines
 
-
 #### Création de la VM
 
 - Créer une VM **gateway** avec les 3 interfaces suivantes:
-    - `enp0s3`: interface **NAT** vers le réseau internet, bénéficie du DHCP de l'hôte.
-    - `enp0s8`: interface **réseau interne** sur le réseau **domain1**.
-    - `enp0s9`: interface **réseau interne** sur le réseau **domain2**.
+  - `enp0s3`: interface **NAT** vers le réseau internet, bénéficie du DHCP de l'hôte.
+  - `enp0s8`: interface **réseau interne** sur le réseau **domain1**.
+  - `enp0s9`: interface **réseau interne** sur le réseau **domain2**.
 
 - Créer une Debian desktop (plus user-friendly pour la configuration, le débugging et les attaques, elle servira aussi pour le SSH sur les MTA des deux domaines) avec comme nom de machine **gateway**
-> Exemple de conf machine: RAM 2048Mo (utile avec le bureau graphique et pour les attaques), 2 processeurs, 128MB de mem graphique
-> Installer les additions invité, ça fait gagner du temps...
+  > :wrench: Exemple de conf machine: RAM 2048Mo (utile avec le bureau graphique et pour les attaques), 2 processeurs, 128MB de mem graphique
+  > Installer les additions invité, ça fait gagner du temps...
 
 - Configurer les interfaces en créant en *root* le fichier `/etc/network/interfaces.d/gateway` et en y mettant:
-```squidconf
-# Interface NAT internet
-auto enp0s3
-iface enp0s3 inet dhcp
 
-# Interface GW sur le domain1
-auto enp0s8
-iface enp0s8 inet static
-        address 192.168.1.254/24
+  ```squidconf
+  # Interface NAT internet
+  auto enp0s3
+  iface enp0s3 inet dhcp
 
-# Interface GW sur le domain2
-auto enp0s9
-iface enp0s9 inet static
-        address 192.168.2.254/24
-```
+  # Interface GW sur le domain1
+  auto enp0s8
+  iface enp0s8 inet static
+          address 192.168.1.254/24
+
+  # Interface GW sur le domain2
+  auto enp0s9
+  iface enp0s9 inet static
+          address 192.168.2.254/24
+  ```
 
 - Après un `sudo apt update`, installer les applicatifs suivants: `ssh nmap net-tools dnsutils tcpdump wireshark python3-scapy terminator mitmproxy`
 
 #### Activer le mode passerelle et prise en compte par IPtables
 
-Editer en *root* la configuration `/etc/sysctl.conf` et modifier (décommenter) la ligne `net.ipv4.ip_forward=1`.
+Éditer en *root* la configuration `/etc/sysctl.conf` et modifier (décommenter) la ligne `net.ipv4.ip_forward=1`.
 
 Installer `iptables-persistent` (répondre `OUI` au maintient des règles par défaut pendant l'install). Ceci permet de modifier plus simplement les règles de IPtables.
 
@@ -110,51 +110,55 @@ COMMIT
 
 Puis faire appliquer les règles en *root* avec `iptables-restore < /etc/iptables/rules.v4`.
 
-> Cool tip: pour accélérer le démarrage:
+> :bulb: Pour accélérer le démarrage:
 > `sudo nano /etc/default/grub`, modifier le restarttimeout à 1 et exécuter `sudo update-grub` (sinon la modif n'est pas prise en compte :s)
 > `sudo nano /etc/lightdm/lightdm.conf` et modifier dans la partie `[Seat:*]` la ligne `autologin-user=debian`.
 > Pour l'accès à une partition, penser à `sudo usermod -aG vboxsf debian`.
 
 #### Installer et configurer dnsmasq
 
-> *dnsmasq* va nous simplifier la vie pour les fonctions communes de serveur de réseau (DNS, DHCP notamment)
+*dnsmasq* va nous simplifier la vie dans un premier temps pour les services support de réseau (DNS, DHCP notamment)
 
-Installation en *root* de `dnsmasq`
+- Installer le package `dnsmasq`
 
-Modifier en *root* le fichier de conf `/etc/dnsmasq.d/domains.conf`
-```apacheconf
-dhcp-authoritative
-domain-needed
-bogus-priv
-expand-hosts
+- Ecraser en *root* le fichier de conf:
 
-# Interfaces à écouter
-interface=enp0s8
-interface=enp0s9
-bind-interfaces
+  ```bash
+  cat <<EOF | sudo tee /etc/dnsmasq.d/domains.conf
+  dhcp-authoritative
+  domain-needed
+  bogus-priv
+  expand-hosts
 
-# Configuration du DHCP
-domain=domain1.loc,192.168.1.0/24
-local=/domain1.loc/
-host-record=mail.domain1.loc,192.168.1.253
-dhcp-range=interface:enp0s8,192.168.1.1,192.168.1.100,255.255.255.0
-dhcp-host=mail,192.168.1.253,infinite
-dhcp-option=interface:enp0s8,option:router,192.168.1.254
-dhcp-option=interface:enp0s8,option:dns-server,192.168.1.254
+  # Interfaces à écouter
+  interface=enp0s8
+  interface=enp0s9
+  bind-interfaces
 
-domain=domain2.loc,192.168.2.0/24
-local=/domain2.loc/
-host-record=mail.domain2.loc,192.168.2.253
-dhcp-range=interface:enp0s9,192.168.2.1,192.168.2.100,255.255.255.0
-dhcp-host=mail,192.168.2.253,infinite
-dhcp-option=interface:enp0s9,option:router,192.168.2.254
-dhcp-option=interface:enp0s9,option:dns-server,192.168.2.254
+  # Configuration du DHCP
+  domain=domain1.loc,192.168.1.0/24
+  local=/domain1.loc/
+  host-record=mail.domain1.loc,192.168.1.253
+  dhcp-range=interface:enp0s8,192.168.1.1,192.168.1.100,255.255.255.0
+  dhcp-host=mail,192.168.1.253,infinite
+  dhcp-option=interface:enp0s8,option:router,192.168.1.254
+  dhcp-option=interface:enp0s8,option:dns-server,192.168.1.254
 
-server=1.1.1.1 # DNS Cloudflare
-server=9.9.9.9 # DNS Quad9
-```
+  domain=domain2.loc,192.168.2.0/24
+  local=/domain2.loc/
+  host-record=mail.domain2.loc,192.168.2.253
+  dhcp-range=interface:enp0s9,192.168.2.1,192.168.2.100,255.255.255.0
+  dhcp-host=mail,192.168.2.253,infinite
+  dhcp-option=interface:enp0s9,option:router,192.168.2.254
+  dhcp-option=interface:enp0s9,option:dns-server,192.168.2.254
 
-#### DNS mon ami...
+  server=1.1.1.1 # DNS Cloudflare
+  server=9.9.9.9 # DNS Quad9
+  EOF
+  ```
+
+#### DNS mon ami
+
 La résolution DNS est gérée par le fichier `/etc/resolv.conf`. Il est automatiquement réédité par une multitude d'applicatifs... notamment par le dhcp du réseau NAT.
 
 En réalité, avec dnsmasq, il nous faut juste inscrire `127.0.0.1` comme résolveur de noms préféré.
@@ -166,21 +170,23 @@ Pour que cela soit pérenne, la solution est de questionner dnsmasq avant le DHC
 #### Installation des VMs
 
 - Créer une VM minimale avec juste une interface en **réseau interne** sur le réseau **domain1** (enp0s3).
-> Exemple de conf machine: RAM 1024Mo (utile qu'il y ait un peu de RAM), 1 processeur, 16MB de mem graphique.
+  > :wrench: Exemple de conf machine: RAM 1024Mo (utile qu'il y ait un peu de RAM), 1 processeur, 16MB de mem graphique.
 
 - Installer une Debian minimale (tout décocher à l'install excepté le serveur SSH) avec comme nom de machine **mail**.
-
-> Tester la connexion SSH à partir de la **gateway** avec `ssh debian@mail.domain1.loc`
-> Tout le reste de l'install se fait à partir de la GW.
+  > :round_pushpin: Tester la connexion SSH à partir de la **gateway** avec `ssh debian@mail.domain1.loc`
+  > Tout le reste de l'install se fait à partir de la GW.
 
 - On la dupliquera à la fin pour avoir nos 2 serveurs de mail (il faudra juste modifier les confs de la 2ème).
 
 #### Base des MTA
 
-- Installer les paquets postfix, dovecot et les utilitaires réseau.
+Installer les paquets postfix, dovecot et les utilitaires réseau.
+
 ```shell
 sudo apt-get install postfix dovecot-imapd tcpdump mailutils telnet
 ```
+
+> :wrench:
 > *Postfix* est un MTA libre, pendant l'install, préciser `site internet`, le restant par défaut (sera reconfiguré après).
 > *dovecot* est un utilitaire qui permet de fournir des démons pour les serveurs IMAP et POP3 pour Postfix. On utilisera IMAP.
 > *mailutils* contient les commandes basiques d'envoi de mail.
@@ -190,59 +196,67 @@ sudo apt-get install postfix dovecot-imapd tcpdump mailutils telnet
 
 ##### Postfix
 
-Ajouter l'utilisateur comme **postmaster**, en éditant (en *root*) le fichier `/etc/aliases` (**debian** est le nom d'utilisateur de la VM mail, à adapter en fonction du cas)
-```apacheconf
-postmaster: root # Relaie les messages d'administration mail vers le compte root
-root: debian # Relaie les messages du root vers l'utilisateur debian
-```
+- Ajouter l'utilisateur comme **postmaster**, en éditant (en *root*) le fichier `/etc/aliases` (**debian** est le nom d'utilisateur de la VM mail, à adapter en fonction du cas).
 
-> Ceci permet de fusionner les boites *postmaster*, *root* et *debian* dans la mailbox de *debian*.
-Pour prendre en compte les changements, exécuter (en *root*) `newaliases`.
+  ```apacheconf
+  postmaster: root # Relaie les messages d'administration mail vers le compte root
+  root: debian # Relaie les messages du root vers l'utilisateur debian
+  ```
 
-Reconfiguration Postfix, en éditant (en *root*) le fichier de conf `/etc/postfix/main.cf`
+> :bulb: Ceci permet de fusionner les boites *postmaster*, *root* et *debian* dans la mailbox de *debian*.
 
-###### Pour le MTA1 (à adapter pour MTA2):
-```apacheconf
-relayhost = [192.168.2.253]
-mynetworks = ... 192.168.1.0/24
-# Activation du Maildir
-home_mailbox = Maildir/
-```
+- Pour prendre en compte les changements, exécuter (en *root*) `newaliases`.
 
-> **NB:** Pour shunter la résolution DNS du MX, il est nécessaire pour nous de mettre le serveur relai entre crochets...
-> Il est impératif dans le cas d'une résolution DNS d'ajouter sur le serveur de noms une ligne MX 
+###### Configuration Postfix du MTA1 (à adapter pour MTA2)
+
+- Reconfiguration Postfix, en éditant (en *root*) le fichier de conf `/etc/postfix/main.cf`
+
+  ```apacheconf
+  relayhost = [192.168.2.253]
+  mynetworks = ... 192.168.1.0/24
+  # Activation du Maildir
+  home_mailbox = Maildir/
+  ```
+
+> :wrench: Pour shunter la résolution DNS du MX, il est nécessaire pour nous de mettre le serveur relai entre crochets...
+> Il est impératif dans le cas d'une résolution DNS d'ajouter sur le serveur de noms une ligne MX.
 
 On test la configuration Postfix (en *root*) avec `postfix check`, puis on recharge la configuration (toujours en *root*) avec `postfix reload`.
 
-##### Test
+##### Test d'envoi de message brut à Postfix
 
-Sur le terminal (Chaque retour à la ligne correspond à une pression sur entrée, avec une réponse du serveur en 2XX, ou 3XX pour la réponse à data) :
-```shell
-telnet mail.domain1.loc 25
-mail from: toto
-rcpt to:postmaster@domain2.loc
-data
-Subject: Objet du mail
-Ici on met le corps du mail.
-.
-quit
-```
+- Sur le terminal (Chaque retour à la ligne correspond à une pression sur entrée, avec une réponse du serveur en 2XX, ou 3XX pour la réponse à data) :
 
-> Sinon `echo "Message de test." | mail -s "Bonjour" postmaster@domain2.loc`
+  ```shell
+  telnet mail.domain1.loc 25
+  mail from: toto
+  rcpt to:postmaster@domain2.loc
+  data
+  Subject: Objet du mail
+  Ici on met le corps du mail.
+  .
+  quit
+  ```
 
-Pour le consulter, on regarde le contenu du fichier `cat /var/mail/debian `. S'il n'apparaît pas, c'est qu'il manque quelque chose (DNS, alias, etc).
+  > :bulb: Sinon `echo "Message de test." | mail -s "Bonjour" postmaster@domain2.loc`
+
+- Pour le consulter, on regarde le contenu du fichier `cat /var/mail/debian`. S'il n'apparaît pas, c'est qu'il manque quelque chose (DNS, alias, etc).
 
 ##### Et les utilisateurs, dans tout ça?
-> NB: Faire le clône des *VMs mail* avant d'ajouter les utilisateurs, sinon ils auront un compte par domaine! (avec des nouvelles adresses MAC).
 
-Pour avoir des utilisateurs, il est nécessaire:
-- [Option Bourrin] De créer autant de comptes utilisateur sur le postfix qu'on veut avoir d'utilisateurs de mail;
-- [Option simple] De créer des comptes d'utilisateurs virtuels sur le serveur postfix;
-- [Option upscalable] D'utiliser une BDD et de déployer un serveur de base de données (SQLite, MariaDB, mySQL, ...).
-Pour des raisons pratiques, on va utiliser la deuxième option (création d'utilisateurs virtuels)...
+- Faire le clône des *VMs mail* avant d'ajouter les utilisateurs, sinon ils auront un compte par domaine! (avec des nouvelles adresses MAC).
+
+> :bulb: Pour avoir des utilisateurs, il est nécessaire:
+>
+> - [Option Bourrin] De créer autant de comptes utilisateur sur le postfix qu'on veut avoir d'utilisateurs de mail;
+> - [Option simple] De créer des comptes d'utilisateurs virtuels sur le serveur postfix;
+> - [Option upscalable] D'utiliser une BDD et de déployer un serveur de base de données (SQLite, MariaDB, mySQL, ...).
+>
+> Pour des raisons pratiques, on va utiliser la deuxième option (création d'utilisateurs virtuels)...
 
 ##### Création du support commun des utilisateurs virtuels
-Création d'un répertoire qui contiendra les boites mails des utilisateurs, puis création du compte *vmail* et du groupe homonyme d'accès à ce répertoire et attribution des droits idoines avec les commandes.
+
+- Création d'un répertoire qui contiendra les boites mails des utilisateurs, puis création du compte *vmail* et du groupe homonyme d'accès à ce répertoire et attribution des droits idoines avec les commandes.
 
 ```shell
 sudo mkdir /home/mailboxes
@@ -251,162 +265,188 @@ sudo useradd vmail --gid vmail --uid 2000 --home /home/mailboxes
 sudo chown -R vmail:vmail /home/mailboxes
 ```
 
-Puis on modifie la conf postfix (`/etc/postfix/main.cf` en *root*) :
-###### Pour le MTA1 (à adapter pour MTA2):
-On retire de mydestination l'item `domain1.loc` et on ajoute:
-```apacheconf
-virtual_mailbox_domains = domain1.loc
-virtual_mailbox_base = /home/mailboxes
-virtual_mailbox_maps = hash:/etc/postfix/virtualmaps
-virtual_uid_maps = static:2000
-virtual_gid_maps = static:2000
-```
+###### Configuration des boites mail pour le MTA1 (à adapter pour MTA2)
+
+- Modifier la conf postfix (`/etc/postfix/main.cf` en *root*)
+
+- On retire de mydestination l'item `domain1.loc` et on ajoute:
+
+  ```apacheconf
+  virtual_mailbox_domains = domain1.loc
+  virtual_mailbox_base = /home/mailboxes
+  virtual_mailbox_maps = hash:/etc/postfix/virtualmaps
+  virtual_uid_maps = static:2000
+  virtual_gid_maps = static:2000
+  ```
 
 ##### Création du mapping des utilisateurs
-On crée le fichier (en *root*)  `/etc/postfix/virtualmaps` et on y ajoute les utilisateurs (sous la forme `<adresse> <nomDuRepertoire>`):
-###### Pour le MTA1 (à adapter pour MTA2):
-```shell
-alice@domain1.loc alice/
-charlie@domain1.loc charlie/
-debian@domain1.loc debian/
-```
 
-Appliquer les modifications en *root* via la commande `postmap /etc/postfix/virtualmaps` et relancer le serveur postfix (en *root* `postfix reload`).
+- On crée le fichier (en *root*)  `/etc/postfix/virtualmaps` et on y ajoute les utilisateurs (sous la forme `<adresse> <nomDuRepertoire>`)
+
+  Configuration des adresses email du domaine 1 (à adapter pour domaine 2):
+
+  ```shell
+  alice@domain1.loc alice/
+  charlie@domain1.loc charlie/
+  debian@domain1.loc debian/
+  ```
+
+- Appliquer les modifications en *root* via la commande `postmap /etc/postfix/virtualmaps`
+
+- Relancer le serveur postfix (en *root* `postfix reload`).
 
 #### Paramétrage Dovecot pour l'IMAP (+ authentification SMTP via Dovecot)
 
 - Configurer *postfix* pour déléguer à *dovecot* l'authentification et le relais des messages, en éditant la configuration (en *root*) `/etc/postfix/main.cf` et en ajoutant les lignes:
-```apacheconf
 
-virtual_transport = dovecot
-dovecot_destination_recipient_limit = 1
-smtpd_sasl_type = dovecot
-smtpd_sasl_path = private/auth
-smtpd_sasl_auth_enable = yes
-```
+  ```apacheconf
+
+  virtual_transport = dovecot
+  dovecot_destination_recipient_limit = 1
+  smtpd_sasl_type = dovecot
+  smtpd_sasl_path = private/auth
+  smtpd_sasl_auth_enable = yes
+  ```
 <!-- Et modifier la ligne ̀`smtpd_relay_restrictions` ainsi: `smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated reject_unauth_destination`. -->
 
 - Ajouter (en *root*) les commandes *dovecot* pour *postfix* dans le fichier `/etc/postfix/master.cf`, ajouter les lignes:
-```squidconf
-dovecot unix    -       n       n       -       -       pipe
-  flags=DRhu user=vmail:vmail argv=/usr/lib/dovecot/dovecot-lda -f ${sender} -a ${original_recipient} -d ${user}
-```
+
+  ```squidconf
+  dovecot unix    -       n       n       -       -       pipe
+    flags=DRhu user=vmail:vmail argv=/usr/lib/dovecot/dovecot-lda -f ${sender} -a ${original_recipient} -d ${user}
+  ```
 
 - Ouvrir en *root* le fichier `/etc/dovecot/dovecot.conf` et désactiver la conf par défaut en commentant la ligne `!include conf.d/*.conf`.
 
 - Créer (en *root*) une nouvelle configuration pour *Dovecot* avec un `/etc/dovecot/local.conf` et y ajouter les lignes:
 
-```apacheconf
-protocols = imap
-#imaps pop3
+  ```apacheconf
+  protocols = imap
+  #imaps pop3
 
-# Fichiers de log
-log_path = /var/log/dovecot.log
-info_log_path = /var/log/dovecot-info.log
+  # Fichiers de log
+  log_path = /var/log/dovecot.log
+  info_log_path = /var/log/dovecot-info.log
 
-# Authentification SASL
-disable_plaintext_auth = no
-auth_mechanisms = plain
-auth_verbose = yes
-auth_default_realm = domain1.loc
-# Sources d'authentification
-passdb {
-        driver = passwd-file
-        args = /etc/dovecot/users
-}
-userdb {
-        driver = static
-        args = uid=virtualmail gid=virtualmail home=/home/mailboxes/%n
-}
+  # Authentification SASL
+  disable_plaintext_auth = no
+  auth_mechanisms = plain
+  auth_verbose = yes
+  auth_default_realm = domain1.loc
+  # Sources d'authentification
+  passdb {
+          driver = passwd-file
+          args = /etc/dovecot/users
+  }
+  userdb {
+          driver = static
+          args = uid=virtualmail gid=virtualmail home=/home/mailboxes/%n
+  }
 
-# Paramètres SSL
-ssl = yes
-ssl_cert = </etc/dovecot/private/dovecot.pem
-ssl_client_ca_dir = /etc/ssl/certs
-ssl_dh = </usr/share/dovecot/dh.pem
-ssl_key = </etc/dovecot/private/dovecot.key
+  # Paramètres SSL
+  ssl = yes
+  ssl_cert = </etc/dovecot/private/dovecot.pem
+  ssl_client_ca_dir = /etc/ssl/certs
+  ssl_dh = </usr/share/dovecot/dh.pem
+  ssl_key = </etc/dovecot/private/dovecot.key
 
-# Format de la boite de réception en Maildir
-mail_location = maildir:/home/mailboxes/%n/Maildir
-namespace inbox {
-  inbox = yes
-  location =
-  mailbox Drafts {
-    auto = subscribe
-    special_use = \Drafts
+  # Format de la boite de réception en Maildir
+  mail_location = maildir:/home/mailboxes/%n/Maildir
+  namespace inbox {
+    inbox = yes
+    location =
+    mailbox Drafts {
+      auto = subscribe
+      special_use = \Drafts
+    }
+    mailbox Junk {
+      auto = subscribe
+      special_use = \Junk
+    }
+    mailbox Sent {
+      auto = subscribe
+      special_use = \Sent
+    }
+    mailbox "Sent Messages" {
+      special_use = \Sent
+    }
+    mailbox Trash {
+      auto = subscribe
+      special_use = \Trash
+    }
+    prefix =
   }
-  mailbox Junk {
-    auto = subscribe
-    special_use = \Junk
-  }
-  mailbox Sent {
-    auto = subscribe
-    special_use = \Sent
-  }
-  mailbox "Sent Messages" {
-    special_use = \Sent
-  }
-  mailbox Trash {
-    auto = subscribe
-    special_use = \Trash
-  }
-  prefix =
-}
 
-# Création du socket d'utilisation de l'authentification Dovecot dans postfix
-service auth {
-  unix_listener /var/spool/postfix/private/auth {
-    mode = 0600
-    user = postfix
-    group = postfix
+  # Création du socket d'utilisation de l'authentification Dovecot dans postfix
+  service auth {
+    unix_listener /var/spool/postfix/private/auth {
+      mode = 0600
+      user = postfix
+      group = postfix
+    }
   }
-}
 
-# Service de statistiques (obligatoire)
-service stats {
-  unix_listener stats-reader {
-    user = vmail
-    group = vmail
-    mode = 0660
+  # Service de statistiques (obligatoire)
+  service stats {
+    unix_listener stats-reader {
+      user = vmail
+      group = vmail
+      mode = 0660
+    }
+    unix_listener stats-writer {
+      user = vmail
+      group = vmail
+      mode = 0660
+    }
   }
-  unix_listener stats-writer {
-    user = vmail
-    group = vmail
-    mode = 0660
-  }
-}
-```
+  ```
 
 - Ajouter les *credentials* d'utilisateurs:
-Générer le mot de passe en *root* avec `doveadm pw -s plain-md5` pour obtenir le hash (pourri en plain md5), puis l'intégrer (en *root*) dans le fichier `/etc/dovecot/users`:
-```squidconf
-bob@domain2.loc:{PLAIN-MD5}9f9d51bc70ef21ca5c14f307980a29d8::::::
-```
-> Format de la ligne:
-> `user@domain:{HASH_ALGO}passwd_hash:UID:GID`
+  Générer le mot de passe avec `sudo doveadm pw -s plain-md5` pour obtenir le hash (pourri en plain md5), puis l'intégrer (en *root*) dans le fichier `/etc/dovecot/users`:
 
-En *root*, Recharger postfix (`postfix reload`), vérifier la conf Dovecot (`dovecot -n`), l'authentification (`doveadm auth test alice`), la déployer (`systemctl restart dovecot`) et contrôler qu'elle tourne (`systemctl status dovecot`).
+    ```squidconf
+    bob@domain2.loc:{PLAIN-MD5}9f9d51bc70ef21ca5c14f307980a29d8::::::
+    ```
+
+    > :round_pushpin: Format de la ligne:
+    > `user@domain:{HASH_ALGO}passwd_hash:UID:GID`
+
+- Recharger postfix (`sudo postfix reload`)
+
+- Relancer dovecot en *root*:
+  - Vérifier la conf Dovecot (`dovecot -n`)
+  - Tester l'authentification (`doveadm auth test alice`
+  - Déployer (`systemctl restart dovecot`)
+  - et contrôler qu'elle a bien démarrer (`systemctl status dovecot`).
 
 #### Durcir la conf postfix
 
 ##### Options générales utiles
-Quelques options utiles à ajouter au /etc/postfix/main.cf:
-- `biff = no` => impact sur les performances si laissé actif avec beaucoup d'utilisateurs, joue sur la disponibilité
-- `append_dot_mydomain = no` => ajoute le nom de domaine sur les messages en local qui n'en ont pas. A partir de la v3 de postfix, c'est `no` par défaut.
-- `smtpd_relay_restrictions = defer_unauth_destination` => rejette les messages qui ne le concernent pas avec un code temporaire (on peut utiliser *reject* à la place de *defer* pour avoir un code d'erreur permanent).
+
+- Quelques options utiles à ajouter au /etc/postfix/main.cf:
+
+  Item de conf | Utilité
+  :---|:---
+  `biff = no` | Impact sur les performances si laissé actif avec beaucoup d'utilisateurs, joue sur la disponibilité
+  `append_dot_mydomain = no` | Ajoute le nom de domaine sur les messages en local qui n'en ont pas. A partir de la v3 de postfix, c'est `no` par défaut
+  `smtpd_relay_restrictions = defer_unauth_destination` | Rejette les messages qui ne le concernent pas avec un code temporaire (on peut utiliser *reject* à la place de *defer* pour avoir un code d'erreur permanent)
 
 ##### Contrôler l'accès SMTP
-- `smtpd_helo_required = yes` => impose un helo/ehlo avant toute connexion SMTP.
 
-  > On peut également s'assurer que le ehlo est conforme à la rfc (du moins d'un point de vue syntaxique) avec les configurations:
-  > ``` squidconf
-  > smtpd_helo_restrictions =
-  >     reject_invalid_helo_hostname,
-  >     reject_non_fqdn_helo_hostname
-  > ```
+- `smtpd_helo_required = yes`, impose un helo/ehlo avant toute connexion SMTP.
+
+- On peut également s'assurer que le ehlo est conforme à la rfc (du moins d'un point de vue syntaxique) avec les configurations:
+
+  ``` squidconf
+  smtpd_helo_restrictions =
+      reject_invalid_helo_hostname,
+      reject_non_fqdn_helo_hostname
+  ```
 
 ##### Contrôler le nom du destinataire
+
 - Postfix peut contrôler que le destinataire a bien une adresse complète, et appartient bien aux utilisateurs connus (dans le cas contraire, Postfix va garder le message pour un destinataire inexistant...):
+
   ```squidconf
   smtpd_recipient_restrictions =
     reject_unlisted_recipient,
@@ -417,58 +457,57 @@ Quelques options utiles à ajouter au /etc/postfix/main.cf:
 
 #### Création de VM
 
-- Créer une Debian desktop avec comme nom de machine et d'utilisteur **alice** (plus simple pour la suite: on pourra accéder à la machine plus simplement)
-> Exemple de conf machine: RAM 1024Mo, 1 CPU, 128MB de mem graphique => C'est suffisant pour une xfce...
+- Créer une Debian desktop avec comme nom de machine et d'utilisteur **alice** (plus simple pour la suite: on pourra accéder à la machine plus simplement).
+  > :wrench: Exemple de conf machine: RAM 1024Mo, 1 CPU, 128MB de mem graphique => C'est suffisant pour une xfce...
+
 - 1 interface réseau, sur **domain1** ou **domain2** (en fonction=> alterner entre les utilisateurs).
 
 - Installer une machine (Debian Desktop Xfce > moins gourmand) avec un compte **alice**.
 
-> Réitérer le process pour tous les utilisateurs (y compris les étapes ci-dessous)
+> :round_pushpin: Réitérer le process pour tous les utilisateurs (y compris les étapes ci-dessous)
 
 #### Base des MUA
 
-- Installer le paquet Thunderbird
-```shell
-sudo apt-get install thunderbird
-```
-> Installer les additions invité, ça fait gagner du temps...
+- Installer le paquet Thunderbird (`sudo apt-get install thunderbird`).
 
-> Ajouter l'utilisateurs aux groupes *sudo* et *vboxsf*:
-> ```shell
-> su
-> sudo usermod -aG sudo,vboxsf <user>
-> sudo reboot
-> ```
+- Installer les additions invité, ça fait gagner du temps...
+
+  - Ajouter les utilisateurs aux groupes *sudo* et *vboxsf*:
+  
+    ```shell
+    sudo usermod -aG sudo,vboxsf <user>
+    sudo reboot
+    ```
 
 #### Configuration des MUA
 
 ##### Interface
 
 La configuration de l'interface réseau se fait normalement par DHCP. Si la connexion ne se fait pas:
-- Contrôler la conf network (`/etc/network/interfaces`) et y ajouter la conf DHCP sur l'interface concernée:
-```squidconf
-auto enp0s3
-iface enp0s3 inet dhcp
-```
-- Puis relancer le service:  
-```bash 
-sudo systemctl restart networking
-```
 
+- Contrôler la conf network (`/etc/network/interfaces`) et y ajouter la conf DHCP sur l'interface concernée:
+
+  ```squidconf
+  auto enp0s3
+  iface enp0s3 inet dhcp
+  ```
+
+- Puis relancer le service (`sudo systemctl restart networking`).
 
 ##### Ajout des certificats S/MIME
 
 Génerer des certificats avec une AC auto-signée, puis générer les certificats de Alice et de Bob.
-> **Important:** Certificats
-> 
+> :warning: Contenu des certificats
 > *Root CA configuration:* Export PEM
+>
 > - nsComment=xca certificate
 > - nsCertType=sslCA, emailCA, objCA
 > - keyUsage=critical,keyCertSign, cRLSign
 > - subjectKeyIdentifier=hash
 > - basicConstraints=critical,CA:TRUE
-> 
+>
 > *Alice cert conf:* Export #PKCS12 pour Alice et PEM pour Bob et Charlie
+>
 > - nsComment=xca certificate
 > - nsCertType=client, email
 > - subjectAltName=DNS:alice@domain1.loc, email:alice@domain1.loc
@@ -476,8 +515,9 @@ Génerer des certificats avec une AC auto-signée, puis générer les certificat
 > - keyUsage=digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement
 > - subjectKeyIdentifier=hash
 > - basicConstraints=critical,CA:FALSE
-> 
+>
 > *Bob cert conf:* Export #PKCS12 pour Bob et PEM pour Alice et Charlie
+>
 > - nsComment=xca certificate
 > - nsCertType=client, email
 > - subjectAltName=DNS:bob@domain2.loc, email:bob@domain2.loc
@@ -485,8 +525,9 @@ Génerer des certificats avec une AC auto-signée, puis générer les certificat
 > - keyUsage=digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement
 > - subjectKeyIdentifier=hash
 > - basicConstraints=critical,CA:FALSE
-> 
+>
 > *Charlie cert conf:* Export #PKCS12 pour Charlie et PEM pour Alice et Bob
+>
 > - nsComment=xca certificate
 > - nsCertType=client, email
 > - subjectAltName=DNS:charlie@domain1.loc, email:charlie@domain1.loc
@@ -495,19 +536,20 @@ Génerer des certificats avec une AC auto-signée, puis générer les certificat
 > - subjectKeyIdentifier=hash
 > - basicConstraints=critical,CA:FALSE
 
-
 Pour les ajouter sur les Thunderbird:
+
 1. Menu (Les 3 barres...) > `Account Settings` > Onglet `End-To-End Encryption`
 2. § `S/MIME`, cliquer sur `Manage S/MIME Certificates`
    1. Dans l'onglet `Your Certificates`, cliquer sur `Import...` puis sélectionner le fichier P12 de l'utilisateur concerné (et mettre le MdP correspondant).
    2. Dans l'onglet `People`, `Import...`, ajouter les CRT des autres utilisateurs.
    3. Dans l'onglet `Authorities`, `Import...`, ajouter le CRT du *Root CA*, puis cliquer sur `OK` (*NB:*Il existe sans doute déja, importé avec le P12)
-   4. !!! Onglet `Authorities`, sélectionner le certificat du *Root CA*, `Edit trust...`, cocher `This certificate can identify mail users` !!!
+   4. :warning: Onglet `Authorities`, sélectionner le certificat du *Root CA*, `Edit trust...`, cocher `This certificate can identify mail users`
 3. De retour dans le § `S/MIME`, item `Personal certificate for digital signing`, `Select...`, sélectionner l'utilisateur (*NB:*il ne doit y en avoir qu'un logiquement...)
 4. Une pop-up vous propose de prendre le même certificat pour le chiffrement, dans le cas contraire même manip avec l'item `Personal certificate for encryption`.
 5. Il est possible de choisir de signer par défaut ses messages, ou de les chiffrer.
 
-> **NB:** Ajout d'un répertoire partagé sous VBox:
+> :wrench: Ajout d'un répertoire partagé sous VBox:
+>
 > 1. Ajouter les additions invités
 > 2. Ne pas oublier le sudo `useradd -aG vboxsf <user>`
 > 3. Puis `sudo reboot`
@@ -518,73 +560,79 @@ Matricer une debian 11 avec 2 interfaces (`enp0s3` sur le réseau `Domaine1` ave
 
 ### Logiciels utiles
 
-- traceroute (apt install net-tools)
+- traceroute (package `net-tools`)
 - TCPDump
-- BurpSuite  impacket mitmproxy 
+- BurpSuite, impacket, mitmproxy
 - Python3
 
+## What's next? Exploitation de la plateforme
 
+### Obtenir un PCAP
 
-# What's next? Exploitation de la plateforme
-
-## Obtenir un PCAP
-
-### TCPDump
+#### TCPDump
 
 Pour faire un PCAP uniquement sur le port 25 et l'enregistrer dans un fichier (avec un nom horodaté...)
 `tcpdump -w $(date +"%Y%m%d-%H%M%S_SMTP.pcap") port 25`
 
 ## Déploiement BIND9 pour utilisation DNS avancée (DNSSec/SPF/DKIM/DMARC)
 
-### Nouveau DHCP:
-`sudo apt purge dnsmasq && sudo apt install isc-dhcp-server`
+### Nouveau DHCP
 
-`sudo nano /etc/default/isc-dhcp-server` et on modifie `INTERFACESv4="enp0s8 enp0s9"`
+- Nettoyage préliminaire du *DNSMasq*:
+  `sudo apt purge dnsmasq`
 
-Puis on édite la conf `/etc/dhcp/dhcpd.conf` de la façon suivante
-```squidconf
-authoritative
+- Installation du DHCP:
+  `sudo apt install isc-dhcp-server`
 
-subnet 192.168.1.0 netmask 255.255.255.0 {
-  option domain-name "domain1.loc";
-  option domain-name-servers dns.domain1.loc, 10.0.2.3;
-  range 192.168.1.1 192.168.1.10;
-  option routers gateway.domain1.loc
-}
+- Configuration du DHCP:
+  Pour les interface, éditer le fichier `/etc/default/isc-dhcp-server` et modifier `INTERFACESv4="enp0s8 enp0s9"`.
 
-subnet 192.168.2.0 netmask 255.255.255.0 {
-  option domain-name "domain2.loc";
-  option domain-name-servers dns.domain2.loc, 10.0.2.3;
-  range 192.168.2.1 192.168.2.10;
-  option routers gateway.domain2.loc
-}
+  Puis on édite la conf `/etc/dhcp/dhcpd.conf` de la façon suivante:
 
-host mail.domain1.loc {
-  hardware ethernet 08:00:27:EF:E3:FA;
-  fixed-address mail.domain1.loc;
-}
+  ```squidconf
+  authoritative
 
-host mail.domain2.loc {
-  hardware ethernet 08:00:27:9A:66:FB;
-  fixed-address mail.domain2.loc;
-}
-```
+  subnet 192.168.1.0 netmask 255.255.255.0 {
+    option domain-name "domain1.loc";
+    option domain-name-servers dns.domain1.loc, 10.0.2.3;
+    range 192.168.1.1 192.168.1.10;
+    option routers gateway.domain1.loc
+  }
 
-> NB: Le `10.0.2.3` est l'@ du DNS de la plateforme Virtualbox. On la trouve dans le fichier `/etc/hosts`.
+  subnet 192.168.2.0 netmask 255.255.255.0 {
+    option domain-name "domain2.loc";
+    option domain-name-servers dns.domain2.loc, 10.0.2.3;
+    range 192.168.2.1 192.168.2.10;
+    option routers gateway.domain2.loc
+  }
+
+  host mail.domain1.loc {
+    hardware ethernet 08:00:27:EF:E3:FA;
+    fixed-address mail.domain1.loc;
+  }
+
+  host mail.domain2.loc {
+    hardware ethernet 08:00:27:9A:66:FB;
+    fixed-address mail.domain2.loc;
+  }
+  ```
+
+> :round_pushpin:
+> Le `10.0.2.3` est l'@ du DNS de la plateforme Virtualbox. On la trouve dans le fichier `/etc/hosts`.
   Il permet de requêter le DNS d'accès à internet, sachant que le DNS de `domain1.loc` et `domain2.loc` sera autoritative sur ses zones, mais pas pour les zones externes.
 
 Et on relance le service DHCP pour confirmer qu'il démarre correctement (`sudo systemctl restart isc-dhcp-server` puis `sudo systemctl status isc-dhcp-server` doit être en `active (running)`).
 
 ### Installer BIND9
 
-Le serveur DNS le plus répandu est BIND (version 9). Il est open-source sous Linux. On l'obtient par le gestionnaire de paquets avec Debian:
-`sudo apt install bind9`
+Le serveur DNS le plus répandu est BIND (version 9). Il est open-source sous Linux. On l'obtient par le gestionnaire de paquets avec Debian (`sudo apt install bind9`).
 
 ### Configurer BIND9
 
 #### `/etc/bind/named.conf.options`: options du serveur DNS
 
-ajouter/modifier les lignes:
+Ajouter/modifier les lignes:
+
 ```squidconf
 acl platform {
   192.168.1.0/24;
@@ -594,29 +642,36 @@ acl platform {
 };
 
 options {
-	directory "/var/cache/bind";
-	version "not currently available";
+  directory "/var/cache/bind";
+  version "not currently available";
 
-	dnssec-validation auto;
-	auth-nxdomain no;
+  dnssec-validation auto;
+  auth-nxdomain no;
 
-	listen-on { 192.168.1.254; 192.168.2.254; 127.0.0.1; };
+  listen-on { 192.168.1.254; 192.168.2.254; 127.0.0.1; };
 
-	allow-query { platform; };
-	recursion no;
+  allow-query { platform; };
+  recursion no;
 };
 ```
-> NB: Le serveur DNS bind a plusieurs types de fonctionnement:
-  - `Forwarder` ou `cache` : il gère la résolution DNS en faisant une résolution récursive, et accessoirement fait office de cache DNS pour accélérer la résolution d'adresse.
-  - `autoritative` : il répond pour les zones configurées (c'est ce que l'on veut!).
+
+> :round_pushpin:
+> Le serveur DNS bind a plusieurs types de fonctionnement:
+>
+> - `Forwarder` ou `cache` : il gère la résolution DNS en faisant une résolution récursive, et accessoirement fait office de cache DNS pour accélérer la résolution d'adresse.
+> - `autoritative` : il répond pour les zones configurées (:point_left: c'est ce que l'on veut!).
 
 #### Fichiers de zones DNS
+
 Pour chaque zone, 2 fichiers:
+
 - Un pour la résolution standard;
 - Un pour la résolution inverse;
 
 ##### Zone domain1.loc
-###### Résolution standard:
+
+###### Résolution standard du domaine 1
+
 ```bash
 cat  <<EOF | sudo tee /etc/bind/db.domain1.loc > /dev/null
 \$TTL 3600
@@ -639,7 +694,8 @@ dns     IN  CNAME  gateway
 EOF
 ```
 
-###### Résolution inverse:
+###### Résolution inverse du domaine 1
+
 ```bash
 cat  <<EOF | sudo tee /etc/bind/db.1.168.192.loc > /dev/null
 \$TTL 3600
@@ -659,169 +715,137 @@ EOF
 ```
 
 ##### Zone domain2.loc
-###### Résolution standard:
-```bash
-cat  <<EOF | sudo tee /etc/bind/db.domain2.loc > /dev/null
-\$TTL 3600
 
-@       IN  SOA gateway.domain2.loc. root.domain2.loc. (
-    20000001; serial
-    3600    ; refresh 1h
-    600     ; retry 10min
-    86400   ; expire 1j
-    3600 )  ; negative cache TTL 1h
-;
+On fait de façon similaire pour le domaine 2:
 
-@       IN  NS  gateway.domain2.loc.
-@       IN  MX  10  mail.domain2.loc.
-
-gateway IN  A   192.168.2.254
-mail    IN  A   192.168.2.253
-
-dns     IN  CNAME  gateway
-EOF
-```
-
-###### Résolution inverse:
-```bash
-cat  <<EOF | sudo tee /etc/bind/db.2.168.192.loc > /dev/null
-\$TTL 3600
-
-@       IN  SOA gateway.domain2.loc. root.domain2.loc. (
-    29999999; serial
-    3600    ; refresh 1h
-    600     ; retry 10min
-    86400   ; expire 1j
-    3600 )  ; negative cache TTL 1h
-;
-
-@       IN  NS  dns.domain2.loc.
-254     IN  PTR gateway.domain2.loc.
-253     IN  PTR mail.domain2.loc.
-EOF
-```
+- En adaptant les noms `domain1` en `domain2`
+- En modifiant les *serial* de `1XXXXXXX` en `2XXXXXXX`
+- En modifiant les adresses IP de `192.168.1.XXX` en `192.168.2.XXX`
 
 ##### Déclaration des zones
-On édite le fichier `/etc/named.conf.local` et on ajoute:
-```bash
-cat  <<EOF | sudo tee -a /etc/bind/named.conf.local > /dev/null
-zone "domain1.loc" {
-  type master;
-  file "/etc/bind/db.domain1.loc";
-};
 
-zone "1.168.192.in-addr.arpa" {
-  type master;
-  file "/etc/bind/db.1.168.192.loc";
-};
+- On édite le fichier `/etc/named.conf.local` et on ajoute:
 
-zone "domain2.loc" {
-  type master;
-  file "/etc/bind/db.domain2.loc";
-};
+  ```bash
+  cat  <<EOF | sudo tee -a /etc/bind/named.conf.local > /dev/null
+  zone "domain1.loc" {
+    type master;
+    file "/etc/bind/db.domain1.loc";
+  };
 
-zone "2.168.192.in-addr.arpa" {
-  type master;
-  file "/etc/bind/db.2.168.192.loc";
-};
-EOF
-```
+  zone "1.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.1.168.192.loc";
+  };
 
-Puis `sudo rndc reload`.
+  zone "domain2.loc" {
+    type master;
+    file "/etc/bind/db.domain2.loc";
+  };
 
-> Utiliser `nslookup` ou `dig` pour checker la résolution + inverse, e.g.:
-  - `dig mail.domain1.loc` = Très verbeux
-  - `dig mail.domain1.loc +short` = ne retourne que la réponse (ou rien)
-  - `dig -x 192.168.1.253 +short` = résolution inverse
-  - `dig domain1.loc -t mx` = l'enregistrement MX de domain1.loc(le `-t` peut être omis)
+  zone "2.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.2.168.192.loc";
+  };
+  EOF
+  ```
 
+- Puis `sudo rndc reload`.
 
-### Ajout SPF (difficulté :hammer:)
+> :bulb: Utiliser `nslookup` ou `dig` pour checker la résolution + inverse, e.g.:
+>
+> - `dig mail.domain1.loc` = Très verbeux
+> - `dig mail.domain1.loc +short` = ne retourne que la réponse (ou rien)
+> - `dig -x 192.168.1.253 +short` = résolution inverse
+> - `dig domain1.loc -t mx` = l'enregistrement MX de domain1.loc(le `-t` peut être omis)
 
-#### Installation sur le serveur mail
+### Ajout du SPF (difficulté :hammer:)
 
-##### Préparation
+#### Installation SPF sur le serveur mail et reconfiguration du Postfix
 
-Obtention du module SPF (Python) à postfix:
-```bash
-sudo apt install postfix-policyd-spf-python
-```
-> Il existe un module similaire en PERL (non testé).
+- Le module SPF de postfix est en python sur les dépôts Debian: `sudo apt install postfix-policyd-spf-python`
 
-##### Configuration de Postfix
+  > :round_pushpin: Il existe un module similaire en PERL (non testé).
 
-Ajout du démon SPF à Postfix dans `/etc/postfix/master.cf`:
+- Ajout du démon SPF à Postfix dans `/etc/postfix/master.cf`:
+
   ```bash
   cat  <<EOF | sudo tee -a /etc/postfix/master.cf
   policyd-spf unix  - n n - 0 spawn user=nobody argv=/usr/bin/policyd-spf
   EOF
   ```
 
-On ajoute également dans la configuration postfix (`main.cf`):
-- `policyd-spf_time_limit = 3600` et
-- dans `smtpd_recipient_restrictions` les items `reject_unauth_destination` (pour éviter un contournement de la politique) et `check_policy_service unix:private/policyd-spf`.
+- On ajoute également dans la configuration postfix (`main.cf`):
 
-Puis on redémarre le PostFix (`sudo postfix reload`).
+  - `policyd-spf_time_limit = 3600` et
+  - dans `smtpd_recipient_restrictions` les items `reject_unauth_destination` (pour éviter un contournement de la politique) et `check_policy_service unix:private/policyd-spf`.
 
-#### Ajout de l'enregistrement DNS pour SPF
+- Puis on redémarre le PostFix (`sudo postfix reload`).
 
-Ajouter l'enregistrement sur le serveur DNS (Gateway):
-```bash
-cat << EOF | sudo tee -a /etc/bind/db.domain1.loc | sudo tee -a /etc/bind/db.domain2.loc
-@	IN  TXT "v=spf1 mx -all"
-EOF
-```
+#### Ajout de l'enregistrement DNS pour SPF sur la GW
 
-Cela permet d'ajouter par défaut tous les enregistrement MX comme légitimes pour émettre des e-mails. Des configurations plus précises de SPF sont possibles (se référer à la doc).
-> `+` Pass (SPF pour info)
-  `-` Fail (rejet si serveur non conforme)
-  `~` Softfail (tag spam si serveur non conforme)
+- Ajouter l'enregistrement sur le serveur DNS (Gateway):
 
-Après un `sudo rndc reload` on peut vérifier le retour du dns avec un `dig domain1.loc -t txt +short` et `dig domain2.loc -t txt +short`.
+  ```bash
+  cat << EOF | sudo tee -a /etc/bind/db.domain1.loc | sudo tee -a /etc/bind/db.domain2.loc
+  @ IN  TXT "v=spf1 mx -all"
+  EOF
+  ```
 
-#### Test
+  > :round_pushpin: Cela permet d'ajouter par défaut tous les enregistrement MX comme légitimes pour émettre des e-mails. Des configurations plus précises de SPF sont possibles (se référer à la doc).
+  > `+` Pass (SPF pour info)
+  > `-` Fail (rejet si serveur non conforme)
+  > `~` Softfail (tag spam si serveur non conforme)
+
+- Après un `sudo rndc reload` on peut vérifier le retour du dns avec un `dig domain1.loc -t txt +short` et `dig domain2.loc -t txt +short`.
+
+#### Test du DNS SPF
 
 Envoyer un message entre Alice (dans *domain1.loc*) et Bob (dans *domain2.loc*). Tout est transparent au niveau de la réception du message, si ce n'est qu'un champ `Received-SPF: Pass` est notifié dans les headers (visible dans le code source du message, `ctrl+U` sur Thunderbird).
 
 ### Ajout de DKIM (difficulté :hammer::hammer:)
 
-#### Installation sur le serveur mail
+#### Installation DKIM sur le serveur mail et reconfiguration du Postfix
 
-##### Préparation
+- Téléchargement de l'implémentation open-source de DKIM sur le dépôt Debian:
 
-Téléchargement de l'implémentation open-source de DKIM :
-```bash
-sudo apt install opendkim opendkim-tools
-```
+  ```bash
+  sudo apt install opendkim opendkim-tools
+  ```
 
-#### Configuration du DNS
+#### Ajout de l'enregistrement DNS pour DKIM sur la GW
 
 ##### Génération du certificat de signature DKIM sur le MTA
-Générer la clé privée et publique (certificat pour l'enregistrement DNS):
-```bash
-sudo -u opendkim opendkim-genkey -D /etc/dkimkeys/ -d domainX.loc -s mail
-```
-> **NB1** : A générer avec l'utilisateur opendkim (d'où le `-u opendkim`)
-  **NB2** : Modifier le domaine `-d domainX.loc` en conséquence (cf `hostname -d`)
 
-Puis récupérer la clé publique pour l'enregistrement DNS:
-```bash
-sudo cat /etc/dkimkeys/mail.txt
-```
+- Générer la clé privée et publique (certificat pour l'enregistrement DNS):
 
-##### Sur le DNS
+  ```bash
+  sudo -u opendkim opendkim-genkey -D /etc/dkimkeys/ -d domainX.loc -s mail
+  ```
 
-Se connecter sur le serveur DNS et ajouter l'enregistrement TXT dans le ficher correspondant (`/etc/bind/db.domain1.loc` ou `/etc/bind/db.domain2.loc`) tel que donné par le fichier `mail.txt`.
-Recharger le DNS avec `sudo rndc reload`.
+  > :wrench: Modifier le domaine `-d domainX.loc` en conséquence (cf `hostname -d`)
+  >
+  > :round_pushpin: La clé est générée avec l'utilisateur opendkim (d'où le `sudo -u opendkim`)
 
-> **NB** : On peut contrôler l'enregistrement DKIM dans le DNS avec un `dig -t txt mail._domainkey.domain1.loc` ou `dig -t txt mail._domainkey.domain2.loc`.
+- Puis récupérer la clé publique pour l'enregistrement DNS (et le copier pour le DNS sur la GW...)
 
-> L'enregistrement DNS peut être donné sur plusieurs lignes. Le laisser tel quel.
+  ```bash
+  sudo cat /etc/dkimkeys/mail.txt
+  ```
+
+##### Ajout de la clé publique DKIM sur le DNS
+
+- Se connecter sur le serveur DNS et ajouter l'enregistrement TXT dans le ficher correspondant (`/etc/bind/db.domain1.loc` ou `/etc/bind/db.domain2.loc`) tel que donné par le fichier `mail.txt`.
+- Recharger le DNS avec `sudo rndc reload`.
+
+> :round_pushpin: Contrôler l'enregistrement DKIM dans le DNS avec un `dig -t txt mail._domainkey.domain1.loc` ou `dig -t txt mail._domainkey.domain2.loc`.
+>
+> :round_pushpin: L'enregistrement DNS peut être donné sur plusieurs lignes. Le laisser tel quel.
   En effet, un enregistrement DNS TXT est généralement limité à 256 carcatères. S'il est plus long il est scindé en parties de 256 octets qui sont exploités successivement dans la réponse.
 
 #### Configuration de OpenDKIM
 
-1. Editer le fichier `/etc/opendkim.conf` avec les paramètres suivants:
+- Editer le fichier `/etc/opendkim.conf` avec les paramètres suivants:
 
   Clé|Valeur|Commentaire
   ---|---|---
@@ -834,25 +858,27 @@ Recharger le DNS avec `sudo rndc reload`.
   `TrustAnchorFile`|Commenter|Sera utilisé pour le DNSSEC, mais pas configuré pour l'instant
   `Nameservers`|`192.168.X.254`|@ du dns, à adapter
 
-  > Remplacer les X par la valeur correspondante (`hostname -A | cut -b12`).
+  > :wrench: Remplacer les X par la valeur correspondante (`hostname -A | cut -b12`).
 
-2. On relance ensuite le service avec `sudo systemctl restart opendkim`.
+- Relancer ensuite le service avec `sudo systemctl restart opendkim`.
 
-3. On peut vérifier que le port est en écoute avec `sudo ss -tulpn | grep opendkim`
+  > :round_pushpin: On peut vérifier que le port est en écoute avec `sudo ss -tulpn | grep opendkim`
 
-4. Pour tester le fonctionnement nominal d'openDKIM, lancer la commande:
-```bash
-sudo opendkim-testkey -s mail -vvv
-```
-> Parmi les résultats, on peut constater :
-  `opendkim-testkey: key not secure`  => Normal (pas DNSSEC)
-  `opendkim-testkey: key OK`  => Rassurant, cela fonctionne.
+- Pour tester le fonctionnement nominal d'openDKIM, lancer la commande:
 
-##### Connexion avec Postfix
+  ```bash
+  sudo opendkim-testkey -s mail -vvv
+  ```
+
+  > :bulb: Parmi les résultats, on peut constater :
+    `opendkim-testkey: key not secure`  => Normal (pas DNSSEC)
+    `opendkim-testkey: key OK`  => Rassurant, cela fonctionne.
+
+##### Milter DKIM/Postfix
 
 Il s'agit maintenant d'ajouter OpenDKIM au serveur MTA *Postfix*.
 
-1. On modifie la configuration postfix dans `main.cf` en ajoutant :
+- Modifier la configuration postfix dans `main.cf` en ajoutant :
 
   Clé|Valeur|Remarque
   ---|---|---
@@ -862,12 +888,14 @@ Il s'agit maintenant d'ajouter OpenDKIM au serveur MTA *Postfix*.
   `internal_mail_filter_classes`|`bounce`|Forcer DKIM y compris pour les mails en interne domaine (nécessaire pour éviter une incompatibilité avec DMARC)
   `AlwaysAddARHeader`|`yes`|Ajout systématique de l'évaluation DKIM sur les messages
 
-1. Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
+- Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
 
-#### Test
+#### Test du DKIM
 
-Une fois les deux MTA configurés, envoyer un message de Alice à Bob. 
+Une fois les deux MTA configurés, envoyer un message de Alice à Bob.
+
 On constate :
+
 - la présence de la signature DKIM (ajoutée par le MTA émetteur);
 - le contrôle de la signature DKIM à la réception (ajouté par le MTA récepteur, confirmant que la signature est bonne sur les champs concernés).
 
@@ -875,76 +903,84 @@ On constate :
 
 > Nous allons configurer le mode automatique *de maintenance* de DNSSEC avec bind: il crée et gère les clés par lui-même, pas de chaine de confiance (*chain of trust*), ce qui est cependant la raison d'être de DNSSEC mais nous arrage dans le cadre d'une plateforme locale qui ne s'inclue pas dans la *chain of trust* de l'Internet...
 
-#### Reconfiguration de Bind
-Sur la *gateway*, on ajoute les options suivantes (dans `/etc/bind/named.conf.option`):
+#### Reconfiguration de Bind pour prise en compte du DNSSEC
 
-Clé|Valeur|Remarque
----|---|---
-`dnssec-validation`|`auto`|Résolution DNSSEC si disponible
-`recursion`|`no`|Pas de résolution récursive (*autoritative DNS*)
+- Sur la *gateway*, on ajoute les options suivantes (dans `/etc/bind/named.conf.option`):
 
-Il faut ensuite activer le DNSSEC sur l'ensemble des zones.
+  Clé|Valeur|Remarque
+  ---|---|---
+  `dnssec-validation`|`auto`|Résolution DNSSEC si disponible
+  `recursion`|`no`|Pas de résolution récursive (*autoritative DNS*)
 
-Cependant, pour utiliser le management automatique des clés par Bind, il convient de déplacer les zones dans un répertoire où bind aura accès en lecture/écriture.  
+  Il faut ensuite activer le DNSSEC sur l'ensemble des zones.
 
-> Sous linux, Apparmor limite ces accès...
-  Pour Bind, on peut voir les répertoires auxquels il a accès avec un `cat /etc/apparmor.d/usr.sbin.named`.
+  Cependant, pour utiliser le management automatique des clés par Bind, il convient de déplacer les zones dans un répertoire où bind aura accès en lecture/écriture.  
 
-A cet effet, on déplace dans un premier temps nos fichiers de zone existants dans `/var/cache/bind` :
-```bash
-sudo cp /etc/bind/db.domain{1,2} /var/cache/bind/ &&\
-sudo cp /etc/bind/db.{1,2}.192.loc /var/cache/bind/
-```
-> **Remarque importante** : A chaque modification d'une zone (fichier `db.*`), il sera impératif d'incrémenter le *serial* se la zone en question!
+  > :roiund_pushpin: Sous linux, Apparmor limite ces accès...
+    Pour Bind, on peut voir les répertoires auxquels il a accès avec un `cat /etc/apparmor.d/usr.sbin.named`.
 
+  A cet effet, on déplace dans un premier temps nos fichiers de zone existants dans `/var/cache/bind` :
 
-Puis on modifie le `/etc/bind/named.conf.local` pour prendre en compte les nouveaux chemins et intégrer le DNSSEC:
-```bash
-cat  <<EOF | sudo tee /etc/bind/named.conf.local > /dev/null
-zone "domain1.loc" {
-  type master;
-  file "/var/cache/bind/db.domain1.loc";
-  dnssec-policy default;
-  inline-signing yes;
-};
+  ```bash
+  sudo cp /etc/bind/db.domain{1,2} /var/cache/bind/ &&\
+  sudo cp /etc/bind/db.{1,2}.192.loc /var/cache/bind/
+  ```
 
-zone "1.168.192.in-addr.arpa" {
-  type master;
-  file "/var/cache/bind/db.1.168.192.loc";
-  dnssec-policy default;
-  inline-signing yes;
-};
+  > :warning: A chaque modification d'une zone (fichier `db.*`), il sera impératif d'incrémenter le *serial* se la zone en question!
 
-zone "domain2.loc" {
-  type master;
-  file "/var/cache/bind/db.domain2.loc";
-  dnssec-policy default;
-  inline-signing yes;
-};
+- Puis on modifie le `/etc/bind/named.conf.local` pour prendre en compte les nouveaux chemins et intégrer le DNSSEC:
 
-zone "2.168.192.in-addr.arpa" {
-  type master;
-  file "/var/cache/bind/db.2.168.192.loc";
-  dnssec-policy default;
-  inline-signing yes;
-};
-```
+  ```bash
+  cat  <<EOF | sudo tee /etc/bind/named.conf.local > /dev/null
+  zone "domain1.loc" {
+    type master;
+    file "/var/cache/bind/db.domain1.loc";
+    dnssec-policy default;
+    inline-signing yes;
+  };
 
-Enfin, on recharge la conf avec `sudo rndc reload`
+  zone "1.168.192.in-addr.arpa" {
+    type master;
+    file "/var/cache/bind/db.1.168.192.loc";
+    dnssec-policy default;
+    inline-signing yes;
+  };
 
-#### Ajout des clés en local sur les serveurs mail:
+  zone "domain2.loc" {
+    type master;
+    file "/var/cache/bind/db.domain2.loc";
+    dnssec-policy default;
+    inline-signing yes;
+  };
 
-1. Récupérer les clés de chacun des domaines produites par BIND avec la commande :
+  zone "2.168.192.in-addr.arpa" {
+    type master;
+    file "/var/cache/bind/db.2.168.192.loc";
+    dnssec-policy default;
+    inline-signing yes;
+  };
+  ```
+
+- Enfin, on recharge la conf avec `sudo rndc reload`
+
+#### Ajout des clés dnsRoot en local sur les serveurs mail
+
+Ceci permet localement d'autoriser des clés autre que celles signées récursivement par le DNS racine d'internet (le *trust anchor*).
+
+- Récupérer les clés de chacun des domaines produites par BIND avec la commande :
+
   ```bash
   dig DNSKEY domain{1,2}.loc | grep -P "DNSKEY\t"
   ```
-2. Les insérer dans le fichier `/usr/share/dns/root.key`.
-3. Activer le DNSSEC en décommentant la ligne `TrustAnchorFile /usr/share/dns/root.key` + restart de OpenDKIM
 
+- Les insérer dans le fichier `/usr/share/dns/root.key`.
+
+- Activer le DNSSEC en décommentant la ligne `TrustAnchorFile /usr/share/dns/root.key` + restart de OpenDKIM
 
 #### Test du DNSSEC
 
 On peut tester le fonctionnement de DNSSEC avec:
+
 - Résolution DNS: `dig @192.168.1.254 +dnssec +multiline -t A gateway.domain1.loc +short`
 - Résolution DNS - clé publique: `dig @192.168.1.254 DNSKEY domain1.loc +short`
 - Résolution inverse: `dig @192.168.1.254 +dnssec +multiline -x 192.168.2.253 +short`
@@ -955,25 +991,29 @@ On doit voir apparaître la signature (ligne `RRSIG` si `dig` verbeux, `PTR` ave
 
 Sur le serveur mail, on peut tester la bonne validation DNS avec DKIM en utilisant `sudo opendkim-testkey -s mail -vvv` (on doit avoir le `key secure`/`key OK`).
 
-Avec `delv` (résolveur DNSSEC), il faut shunter le passage par le *trusted anchor* `.`:
-
-1. Créer le fichier de clés
-  ```bash
-  cat <<EOF | tee keys
-  trust-anchors {
-  $(dig DNSKEY domain1.loc +short | sed 's/^\(.*\) \(.*\) \(.*\)/domain1.loc. static-key \1 "\2 \3";/')
-  $(dig DNSKEY domain2.loc +short | sed 's/^\(.*\) \(.*\) \(.*\)/domain2.loc. static-key \1 "\2 \3";/')
-  };
-  EOF
-  ```
-2. Indiquer à delv où sont les clés et shunter la résolution `root`:
-  ```bash
-  delv @192.168.1.254 domain1.loc -t MX -a keys +root=domain1.loc
-  ```
+On peut également tester avec `delv` => c'est un résolveur DNSSEC qui, contrairement à `nslookup` ou `dig`, vérifie le DNSSEC.
+> :round_pushpin: Pour `delv`, il faut cependant shunter le passage par le *trusted anchor* `.` (qui est un principe de base de DNSSEC):
+>
+> - Créer le fichier de clés
+>
+>   ```bash
+>   cat <<EOF | tee keys
+>   trust-anchors {
+>   $(dig DNSKEY domain1.loc +short | sed 's/^\(.*\) \(.*\) \(.*\)/domain1.loc. static-key \1 "\2 \3";/')
+>   $(dig DNSKEY domain2.loc +short | sed 's/^\(.*\) \(.*\) \(.*\)/domain2.loc. static-key \1 "\2 \3";/')
+>   };
+>   EOF
+>   ```
+>
+> - Indiquer à delv où sont les clés et shunter la résolution `root`:
+>
+>   ```bash
+>   delv @192.168.1.254 domain1.loc -t MX -a keys +root=domain1.loc
+>   ```
 
 ### Ajout de DMARC (difficulté :hammer::hammer:)
 
-#### Ajout de la politique au DNS
+#### Ajout de la politique DMARC au DNS
 
 Il s'agit dans un premier temps de publier sur le DNS ce que l'on souhaite avoir comme retour et comme rapports des autres MTA utilisant DMARC (politique).
 
@@ -987,36 +1027,37 @@ EOF
 done
 ```
 
+> :round_pushpin: L'ajout de cette ligne est suffisante pour obtenir des rapports DMARC par les autres MTA (si tenté qu'ils aient DMARC correctement configuré pour le faire) et faire appliquer les politiques précisées, à savoir :
+>
+> - `p=reject` : Rejet des messages qui ne respectent pas la politique, parmi `none`, `quarantine`, `reject` (on peut préciser également le champ `sp` pour les sous-domaines);
+> - `rua` : adresse à laquelle envoyer les rapports aggrégés DMARC (il existe également `ruf`, pour l'envoi de rapports détaillés/forensic, auquel il faut préciser le champ `fo` qui détermine dans quel cas envoyer un `ruf`);
+> - `pct` : Pourcentage de message sur lesquels appliquer la politique DMARC;
+> - `adkim` : Cohérence entre le domaine DKIM (champ signé `d=`) et le domaine du champ `From` du message (`r`=relax, accepte l'ensemble du domaine organisationnel, ou `s`=strict)
+> - `aspf` : Cohérence entre le domaine SPF (i.e. le champ `from` SMTP) et le domaine du champ `From` du message.
 
-L'ajout de cette ligne est suffisante pour obtenir des rapports DMARC par les autres MTA (si tenté qu'ils aient DMARC correctement configuré pour le faire) et faire appliquer les politiques précisées, à savoir :
+#### Installation et configuration du package OpenDMARC
 
-- `p=reject` : Rejet des messages qui ne respectent pas la politique, parmi `none`, `quarantine`, `reject` (on peut préciser également le champ `sp` pour les sous-domaines);
-- `rua` : adresse à laquelle envoyer les rapports aggrégés DMARC (il existe également `ruf`, pour l'envoi de rapports détaillés/forensic, auquel il faut préciser le champ `fo` qui détermine dans quel cas envoyer un `ruf`);
-- `pct` : Pourcentage de message sur lesquels appliquer la politique DMARC;
-- `adkim` : Cohérence entre le domaine DKIM (champ signé `d=`) et le domaine du champ `From` du message (`r`=relax, accepte l'ensemble du domaine organisationnel, ou `s`=strict)
-- `aspf` : Cohérence entre le domaine SPF (i.e. le champ `from` SMTP) et le domaine du champ `From` du message. 
+##### Installation de OpenDMARC sur le MDA
 
-#### Package OpenDMARC
-
-##### Installation sur le MDA
 Le package *OpenDMARC* a 2 fonctions:
 
 1. Application de la politique DMARC définie par le domaine émetteur, notamment contrôle de l'alignement des noms de domaine (`From` SMTP / `From` headers / `d=` DKIM), permettant une uniformisation des contrôles SPF et DKIM et la définition d'une politique par le domaine émetteur ;
 2. Génération de rapports d'activité (envoyés à `rua` émetteur défini dans l'enregistrement DNS de DMARC) et de rapports détaillés (forensic, envoyés à `ruf` émetteur défini dans l'enregistrement DNS de DMARC), permettant une rétroaction sur les abus d'usage d'un nom de domaine.
 
-> e.g., Paypal ou Facebook ont une politique DMARC de rejet systématique des abus.
+> :bulb: Paypal ou Facebook ont actuellement une politique DMARC de rejet systématique des abus.
 
-L'installation se fait via le gestionnaire de package:
-```bash
-sudo apt install opendmarc
-```
+- L'installation se fait via le gestionnaire de package:
 
-> **NB:** Dans un premier temps, il n'est pas nécessaire d'installer la base de données de opendmarc avec dbconfig-common.
-  Cette dernière sert pour la génération des rapports `rua` et `ruf`, qui dans le cas de notre plateforme n'ont qu'un intérêt limité.
+  ```bash
+  sudo apt install opendmarc
+  ```
 
-##### Configuration
+> :round_pushpin: Dans un premier temps, il n'est pas nécessaire d'installer la base de données de opendmarc avec dbconfig-common.
+> Cette dernière sert pour la génération des rapports `rua` et `ruf`, qui dans le cas de notre plateforme n'ont qu'un intérêt limité.
 
-1. Dans le fichier de configuration de OpenDMARC (`/etc/opendmarc.conf`), modifier les configurations suivantes:
+##### Configuration de OpenDMARC
+
+- Dans le fichier de configuration de OpenDMARC (`/etc/opendmarc.conf`), modifier les configurations suivantes:
 
   Clé | Valeur | Commentaire
   ---|---|---
@@ -1027,7 +1068,7 @@ sudo apt install opendmarc
   `SPFSelfValidate`| `true`|Bretelles + ceinture: si DMARC ne trouve pas de résultat SPF, effectue lui-même le check SPF.
   `IgnoreHosts`|`/etc/opendmarc-ignorehosts.conf`|Ignorer DMARC pour les messages sortants...
 
-2. Créer le fichier avec le réseau local à ignorer:
+- Créer le fichier avec le réseau local à ignorer:
 
   ```bash
   cat <<EOF | sudo tee /etc/opendmarc-ignorehosts.conf
@@ -1035,9 +1076,11 @@ sudo apt install opendmarc
   EOF
   ```
 
-##### Intégration à Postfix
+##### Intégration du milter DMARC à Postfix
 
-1. On modifie les lignes suivantes sur la conf postfix (`/etc/postfix/main.cf`) :
+A l'instar de OpenDKIM, il faut ajouter le *milter* à Postfix
+
+- Modifier les lignes suivantes sur la conf postfix (`/etc/postfix/main.cf`) :
 
   Clé | Valeur | Commentaire
   ---|---|---
@@ -1045,15 +1088,67 @@ sudo apt install opendmarc
   `smtpd_milters` | `inet:localhost:8892` | Il y a déja le socket de OpenDKIM, **ajouter** la valeur séparée d'un espace pour opendmarc
   `non_smtpd_milters` | `$smtpd_milters` | Normalement déja fait avec OpenDKIM
 
-2. Puis relancer OpenDMARC (`sudo systemctl restart opendmarc`) et recharger la configuration *Postfix* (`sudo postfix reload`).
+- Puis relancer OpenDMARC (`sudo systemctl restart opendmarc`) et recharger la configuration *Postfix* (`sudo postfix reload`).
 
 #### Test OpenDMARC
 
 Envoyer un mail vers le domaine de réception, on doit voir apparaitre dans les headers `Authentication-Results: OpenDMARC; dmarc=pass [...]`.
 
-# Tests authentification Mails via les protocoles de sécurité
+### Ajout de la prise en compte du protocole ARC (OpenARC, expérimental)
+
+#### Installation du package OpenARC
+
+- Le package est à cette date expérimental sous debian depuis 2021, et a des dépendances dans les dépôts `unstable`, donc il est nécessaire d'ajouter les dépôts idoines.
+
+```bash
+cat << EOF| sudo tee /etc/apt/sources.list.d/openarc.list
+deb http://deb.debian.org/debian/ experimental main
+deb http://deb.debian.org/debian/ unstable main
+EOF
+sudo apt update && sudo apt -t experimental install openarc
+```
+
+> :bulb: A l'issue, je vous conseille de supprimer le fichier `/etc/apt/sources.list.d/openarc.list` pour éviter un upgrade sur des paquets `unstable`. En effet, les repos `testing`, `unstable` et `experimental` n'ont pas de suivi de MCS.
+
+#### Configuration de OpenARC
+
+- Editer le fichier `/etc/openarc.conf` avec les paramètres suivants:
+
+  Clé|Valeur|Commentaire
+  ---|---|---
+  `Syslog`|`yes`|
+  `Mode`|`sv`|
+  `Domain`|`domainX.loc`|Nom de domaine à adapter
+  `Selector`|`mail`|Sélecteur pour les clés DKIM
+  `KeyFile`|`/etc/openarc/mail.private`|
+  `Socket`|`inet:8893@localhost`|Du fait du jail de `chroot` sous debian, il est plus simple de passer par une interface réseau plutôt qu'une socket
+
+  > :wrench: Remplacer les X par la valeur correspondante (`hostname -A | cut -b12`).
+
+- Copier dans un dossier openarc les clés d'opendkim avec:
+
+  ```bash
+  sudo cp -r /etc/dkimkeys /etc/openarc
+  sudo chown openarc:openarc /etc/openarc
+  sudo systemctl restart openarc
+  ```
+
+##### Connexion du milter OpenARC à Postfix
+
+Il s'agit maintenant d'ajouter OpenDKIM au serveur MTA *Postfix*.
+
+- Modifier la configuration postfix dans `main.cf` en ajoutant :
+
+  Clé|Valeur|Remarque
+  ---|---|---
+  `smtpd_milters`|`inet:localhost:8893`|Connexion avec le résolveur d'OpenARC
+
+- Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
+
+## Tests authentification Mails via les protocoles de sécurité
 
 Nom du test identifié à partir de 3 caractères ordonnés (C=cohérent, I=incohérent), correspondant aux 3 champs :
+
 1. Champ `Mail from` du SMTP (enveloppe)
 2. Champ `From :` du corps de données
 3. Champ `d=<domain>` de DKIM
@@ -1062,9 +1157,10 @@ Test | Postfix | SPF | DKIM | DMARC | Détails
 :---|:---:|:---:|:---:|:---:|:---
 CCC | OK | Pass | Pass | Pass | Tout est nominal
 
-## Protocle de test
+### Protocle de test
 
-### Envoi de message
+#### Envoi de message
+
 Pour cela on exécute la commande suivante:
 
 ```bash
@@ -1084,11 +1180,12 @@ QUIT
 EOF
 ```
 
-Il est nécessaire de faire une authentification en amont avant l'envoi du message pour avoir la signatue DKIM. Le format d'authentification se fait via la commande `echo -ne "\0username\0password" | base64`. C'est horrible! On envoie l'auth en clair sur le réseau, simplement encodé en B64!!!
+> :warning: Il est nécessaire de faire une authentification en amont avant l'envoi du message pour avoir la signatue DKIM. Le format d'authentification se fait via la commande `echo -ne "\0username\0password" | base64`. C'est horrible! On envoie l'auth en clair sur le réseau, simplement encodé en B64!
 
-### Test multi-envoi:
+#### Test multi-envoi
 
 On fait 2 boucles imbriquées afin de parcourir toutes les valeurs possibles (2 valeurs à chaque fois).
+
 ```bash
 for smtpfrom in "C|alice@domain1.loc" "I|alice@otherdomain.loc";do
 for datafrom in "C|alice@domain1.loc" "I|alice@otherdomain.loc";do
@@ -1111,66 +1208,11 @@ done
 done
 ```
 
-### Plugin Thunderbird
+#### Plugin Thunderbird
 
 Installer le plug-in auth.xpi.
 
-### Ajout de la prise en compte du protocole ARC (OpenARC, expérimental)
-
-#### Installation du package OpenARC
-
-Le package est à cette date expérimental sous debian depuis 2021, et a des dépendances dans les repo `unstable`, donc il est nécessaire d'ajouter les dépôts idoines.
-
-```bash
-cat << EOF| sudo tee /etc/apt/sources.list.d/openarc.list
-deb http://deb.debian.org/debian/ experimental main
-deb http://deb.debian.org/debian/ unstable main
-EOF
-sudo apt update && sudo apt -t experimental install openarc
-```
-
-
-> **NB :** A l'issue, je vous conseille de supprimer le fichier `/etc/apt/sources.list.d/openarc.list` pour éviter un upgrade sur des paquets `unstable`.
-  **NB du NB:** les repos `testing`, `unstable` et `experimental` n'ont pas de suivi de MCS.
-
-#### Configuration de OpenARC
-
-1. Editer le fichier `/etc/openarc.conf` avec les paramètres suivants:
-
-  Clé|Valeur|Commentaire
-  ---|---|---
-  `Syslog`|`yes`|
-  `Mode`|`sv`|
-  `Domain`|`domainX.loc`|Nom de domaine à adapter
-  `Selector`|`mail`|Sélecteur pour les clés DKIM
-  `KeyFile`|`/etc/openarc/mail.private`|
-  `Socket`|`inet:8893@localhost`|Du fait du jail de `chroot` sous debian, il est plus simple de passer par une interface réseau plutôt qu'une socket
-
-  > Remplacer les X par la valeur correspondante (`hostname -A | cut -b12`).
-
-1. Copier dans un dossier openarc les clés d'opendkim avec 
-  ```bash
-  sudo cp -r /etc/dkimkeys /etc/openarc
-  sudo chown openarc:openarc /etc/openarc
-  sudo systemctl restart openarc
-  ```
-
-##### Connexion avec Postfix
-
-Il s'agit maintenant d'ajouter OpenDKIM au serveur MTA *Postfix*.
-
-1. On modifie la configuration postfix dans `main.cf` en ajoutant :
-
-  Clé|Valeur|Remarque
-  ---|---|---
-  `smtpd_milters`|`inet:localhost:8893`|Connexion avec le résolveur d'OpenARC
-
-1. Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
-
-
-
-
-
 > TODO:
-  - Installer mailutils sur les clients
-  - Envoyer des messages via la commande mail (contenu formatté / automatisation)
+>
+> - Installer mailutils sur les clients
+> - Envoyer des messages via la commande mail (contenu formatté / automatisation)
