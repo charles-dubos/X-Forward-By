@@ -622,7 +622,7 @@ cat  <<EOF | sudo tee /etc/bind/db.domain1.loc > /dev/null
 \$TTL 3600
 
 @       IN  SOA gateway.domain1.loc. root.domain1.loc. (
-    1001    ; serial
+    10000001; serial
     3600    ; refresh 1h
     600     ; retry 10min
     86400   ; expire 1j
@@ -645,7 +645,7 @@ cat  <<EOF | sudo tee /etc/bind/db.1.168.192.loc > /dev/null
 \$TTL 3600
 
 @       IN  SOA gateway.domain1.loc. root.domain1.loc. (
-    1011    ; serial
+    19999999; serial
     3600    ; refresh 1h
     600     ; retry 10min
     86400   ; expire 1j
@@ -665,7 +665,7 @@ cat  <<EOF | sudo tee /etc/bind/db.domain2.loc > /dev/null
 \$TTL 3600
 
 @       IN  SOA gateway.domain2.loc. root.domain2.loc. (
-    1002    ; serial
+    20000001; serial
     3600    ; refresh 1h
     600     ; retry 10min
     86400   ; expire 1j
@@ -688,7 +688,7 @@ cat  <<EOF | sudo tee /etc/bind/db.2.168.192.loc > /dev/null
 \$TTL 3600
 
 @       IN  SOA gateway.domain2.loc. root.domain2.loc. (
-    1012    ; serial
+    29999999; serial
     3600    ; refresh 1h
     600     ; retry 10min
     86400   ; expire 1j
@@ -765,12 +765,19 @@ Puis on redémarre le PostFix (`sudo postfix reload`).
 
 #### Ajout de l'enregistrement DNS pour SPF
 
-Sur le serveur DNS, ajouter l'enregistrement suivant dans le fichier idoine (`db.domainX.loc`):
-```squidconf
+Ajouter l'enregistrement sur le serveur DNS (Gateway):
+```bash
+cat << EOF | sudo tee -a /etc/bind/db.domain1.loc | sudo tee -a /etc/bind/db.domain2.loc
 @	IN  TXT "v=spf1 mx -all"
+EOF
 ```
+
 Cela permet d'ajouter par défaut tous les enregistrement MX comme légitimes pour émettre des e-mails. Des configurations plus précises de SPF sont possibles (se référer à la doc).
-> Après un `sudo rndc reload` on peut vérifier le retour du dns avec un `dig domainX.loc -t txt +short`
+> `+` Pass (SPF pour info)
+  `-` Fail (rejet si serveur non conforme)
+  `~` Softfail (tag spam si serveur non conforme)
+
+Après un `sudo rndc reload` on peut vérifier le retour du dns avec un `dig domain1.loc -t txt +short` et `dig domain2.loc -t txt +short`.
 
 #### Test
 
@@ -794,8 +801,8 @@ Générer la clé privée et publique (certificat pour l'enregistrement DNS):
 ```bash
 sudo -u opendkim opendkim-genkey -D /etc/dkimkeys/ -d domainX.loc -s mail
 ```
-> **NB1** : A générer avec l'utilisateur opendkim!
-  **NB2** : Modifier le domainX.loc...
+> **NB1** : A générer avec l'utilisateur opendkim (d'où le `-u opendkim`)
+  **NB2** : Modifier le domaine `-d domainX.loc` en conséquence (cf `hostname -d`)
 
 Puis récupérer la clé publique pour l'enregistrement DNS:
 ```bash
@@ -804,44 +811,38 @@ sudo cat /etc/dkimkeys/mail.txt
 
 ##### Sur le DNS
 
-Se connecter sur le serveur DNS et ajouter l'enregistrement TXT dans le ficher correspondant (`/etc/bind/db.domainX.loc`) tel que donné par le fichier `mail.txt`.
+Se connecter sur le serveur DNS et ajouter l'enregistrement TXT dans le ficher correspondant (`/etc/bind/db.domain1.loc` ou `/etc/bind/db.domain2.loc`) tel que donné par le fichier `mail.txt`.
 Recharger le DNS avec `sudo rndc reload`.
 
-> **NB** : On peut contrôler l'enregistrement DKIM dans le DNS avec un `dig -t txt sur mail._domainkey.domainX.loc`.
+> **NB** : On peut contrôler l'enregistrement DKIM dans le DNS avec un `dig -t txt mail._domainkey.domain1.loc` ou `dig -t txt mail._domainkey.domain2.loc`.
 
 > L'enregistrement DNS peut être donné sur plusieurs lignes. Le laisser tel quel.
   En effet, un enregistrement DNS TXT est généralement limité à 256 carcatères. S'il est plus long il est scindé en parties de 256 octets qui sont exploités successivement dans la réponse.
 
 #### Configuration de OpenDKIM
 
-Editer le fichier `/etc/opendkim.conf` :
-- Doivent apparaître:
-  ```squidconf
-  LogWhy yes
-  Mode sv
+1. Editer le fichier `/etc/opendkim.conf` avec les paramètres suivants:
 
-  Socket local:/var/spool/postfix/opendkim/opendkim.sock
+  Clé|Valeur|Commentaire
+  ---|---|---
+  `LogWhy`|`yes`|RTFM
+  `Mode`|`sv`|Utilisation de DKIM en signataire et en vérifieur
+  `Domain`|`domainX.loc`|Nom de domaine à adapter
+  `Selector`|`mail`|Sélecteur pour les clés DKIM
+  `KeyFile`|`/etc/dkimkeys/mail.private`|Plus lisible avec le nom du sélecteur
+  `Socket`|`inet:8891@localhost`|Du fait du jail de `chroot` sous debian, il est plus simple de passer par une interface réseau plutôt qu'une socket
+  `TrustAnchorFile`|Commenter|Sera utilisé pour le DNSSEC, mais pas configuré pour l'instant
+  `Nameservers`|`192.168.X.254`|@ du dns, à adapter
 
-  Nameservers 192.168.X.254
+  > Remplacer les X par la valeur correspondante (`hostname -A | cut -b12`).
 
-  Domain                  domainX.loc
-  Selector                mail
-  KeyFile                 /etc/dkimkeys/mail.private
-  ```
-  > Remplacer les X par ka valeur correspondante.
-- Commenter `TrustAnchorFile ...` (utilisé uniquement pour le DNSSEC).
-- Créer le répertoire du socket partagé avec Postfix:
-  ```bash
-  sudo mkdir /var/spool/postfix/opendkim
-  sudo chown opendkim:postfix /var/spool/postfix/opendkim
-  ```
-- Dans `/etc/default/opendkim`, vérifier la définition du `RUNDIR=/var/spool/postfix/opendkim`
+2. On relance ensuite le service avec `sudo systemctl restart opendkim`.
 
-On relance ensuite le service `opendkim`.
+3. On peut vérifier que le port est en écoute avec `sudo ss -tulpn | grep opendkim`
 
-Pour tester le fonctionnement nominal d'openDKIM, lancer la commande:
+4. Pour tester le fonctionnement nominal d'openDKIM, lancer la commande:
 ```bash
-sudo opendkim-testkey -d domainX.loc -s mail -vvv
+sudo opendkim-testkey -s mail -vvv
 ```
 > Parmi les résultats, on peut constater :
   `opendkim-testkey: key not secure`  => Normal (pas DNSSEC)
@@ -849,20 +850,19 @@ sudo opendkim-testkey -d domainX.loc -s mail -vvv
 
 ##### Connexion avec Postfix
 
-Il s'agit maintenant d'ajouter DKIM au serveur MTA *Postfix*.
+Il s'agit maintenant d'ajouter OpenDKIM au serveur MTA *Postfix*.
 
-1. On ajoute postfix au groupe opendkim: `sudo adduser postfix opendkim`
+1. On modifie la configuration postfix dans `main.cf` en ajoutant :
 
-2. On exécute à cet effet la commande suivante pour ajouter les lignes en question à la conf postfix :
-  ```bash
-  cat <<EOF | sudo tee -a /etc/postfix/main.cf
-  milter_default_action = accept
-  smtpd_milters = local:opendkim/opendkim.sock
-  non_smtpd_milters = $smtpd_milters
-  EOF
-  ```
+  Clé|Valeur|Remarque
+  ---|---|---
+  `milter_default_action`|`accept`|Evite le blocage si OpenDKIM ne fonctionne pas
+  `smtpd_milters`|`inet:localhost:8891`|Connexion avec le résolveur d'OpenDKIM
+  `non_smtpd_milters`|`$smtpd_milters`|Idem
+  `internal_mail_filter_classes`|`bounce`|Forcer DKIM y compris pour les mails en interne domaine (nécessaire pour éviter une incompatibilité avec DMARC)
+  `AlwaysAddARHeader`|`yes`|Ajout systématique de l'évaluation DKIM sur les messages
 
-  Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
+1. Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
 
 #### Test
 
@@ -876,12 +876,12 @@ On constate :
 > Nous allons configurer le mode automatique *de maintenance* de DNSSEC avec bind: il crée et gère les clés par lui-même, pas de chaine de confiance (*chain of trust*), ce qui est cependant la raison d'être de DNSSEC mais nous arrage dans le cadre d'une plateforme locale qui ne s'inclue pas dans la *chain of trust* de l'Internet...
 
 #### Reconfiguration de Bind
-Sur la gateway, on ajoute les options suivantes (dans `/etc/bind/named.conf.option`):
-```squidconf
-dnssec-validation auto;
-recursion no;
-```
-Cela permet d'activer la validation DNSSEC récursive.
+Sur la *gateway*, on ajoute les options suivantes (dans `/etc/bind/named.conf.option`):
+
+Clé|Valeur|Remarque
+---|---|---
+`dnssec-validation`|`auto`|Résolution DNSSEC si disponible
+`recursion`|`no`|Pas de résolution récursive (*autoritative DNS*)
 
 Il faut ensuite activer le DNSSEC sur l'ensemble des zones.
 
@@ -892,9 +892,11 @@ Cependant, pour utiliser le management automatique des clés par Bind, il convie
 
 A cet effet, on déplace dans un premier temps nos fichiers de zone existants dans `/var/cache/bind` :
 ```bash
-sudo cp /etc/bind/db.domain* /var/cache/bind/ &&\
-sudo cp /etc/bind/db.*.192.loc /var/cache/bind/
+sudo cp /etc/bind/db.domain{1,2} /var/cache/bind/ &&\
+sudo cp /etc/bind/db.{1,2}.192.loc /var/cache/bind/
 ```
+> **Remarque importante** : A chaque modification d'une zone (fichier `db.*`), il sera impératif d'incrémenter le *serial* se la zone en question!
+
 
 Puis on modifie le `/etc/bind/named.conf.local` pour prendre en compte les nouveaux chemins et intégrer le DNSSEC:
 ```bash
@@ -934,11 +936,10 @@ Enfin, on recharge la conf avec `sudo rndc reload`
 
 1. Récupérer les clés de chacun des domaines produites par BIND avec la commande :
   ```bash
-  dig DNSKEY domain1.loc | grep -P "DNSKEY\t"
+  dig DNSKEY domain{1,2}.loc | grep -P "DNSKEY\t"
   ```
 2. Les insérer dans le fichier `/usr/share/dns/root.key`.
-3. Activer le DNSSEC en décommentant la ligne `TrustAnchorFile /usr/share/dns/root.key`
-4. Recharger *opendkim* avec un `sudo systemctl restart opendkim`
+3. Activer le DNSSEC en décommentant la ligne `TrustAnchorFile /usr/share/dns/root.key` + restart de OpenDKIM
 
 
 #### Test du DNSSEC
@@ -950,38 +951,226 @@ On peut tester le fonctionnement de DNSSEC avec:
 
 On doit voir apparaître la signature (ligne `RRSIG` si `dig` verbeux, `PTR` avec signature en B64 si `dig +short`).
 
-##### Vérification de signature: 
+##### Vérification de signature
 
-Sur le serveur mail, on peut tester la bonne validation DNS avec DKIM en utilisant `sudo opendkim-testkey -d domain1.loc -s mail -vvv` (on doit avoir le `key secure`/`key OK`).
+Sur le serveur mail, on peut tester la bonne validation DNS avec DKIM en utilisant `sudo opendkim-testkey -s mail -vvv` (on doit avoir le `key secure`/`key OK`).
 
 Avec `delv` (résolveur DNSSEC), il faut shunter le passage par le *trusted anchor* `.`:
+
 1. Créer le fichier de clés
   ```bash
   cat <<EOF | tee keys
   trust-anchors {
-  domain1.loc.	static-key $(dig DNSKEY domain1.loc +short);
-  domain2.loc.	static-key $(dig DNSKEY domain2.loc +short);
+  $(dig DNSKEY domain1.loc +short | sed 's/^\(.*\) \(.*\) \(.*\)/domain1.loc. static-key \1 "\2 \3";/')
+  $(dig DNSKEY domain2.loc +short | sed 's/^\(.*\) \(.*\) \(.*\)/domain2.loc. static-key \1 "\2 \3";/')
   };
   EOF
   ```
-2. Ajouter des doubles quotes (`"`) à chacune des clés
-3. Indiquer à delv où sont les clés et shunter la résolution `root`:
+2. Indiquer à delv où sont les clés et shunter la résolution `root`:
   ```bash
   delv @192.168.1.254 domain1.loc -t MX -a keys +root=domain1.loc
   ```
 
-### Ajout de DMARC
+### Ajout de DMARC (difficulté :hammer::hammer:)
 
 #### Ajout de la politique au DNS
 
 Il s'agit dans un premier temps de publier sur le DNS ce que l'on souhaite avoir comme retour et comme rapports des autres MTA utilisant DMARC (politique).
 
-A cet effet, on ajoute à la zone DNS (rappel: dans `/var/cache/bind/`) l'enregitrement TXT suivant:
+A cet effet, on ajoute à la zone DNS l'enregitrement TXT :
 
-```squidconf
-_dmarc IN  TXT "v=DMARC1; p=reject; rua=mailto:postmaster@domainX.loc; pct=100; adkim=s; aspf=s"
+```bash
+for domain in {"domain1","domain2"}; do
+cat <<EOF | sudo tee -a /var/cache/bind/db.${domain}.loc
+_dmarc IN  TXT "v=DMARC1; p=reject; rua=mailto:postmaster@${domain}.loc; pct=100; adkim=s; aspf=s"
+EOF
+done
 ```
 
-#### Ajout de OpenDMARC à Postfix pour la génération des rapports
+
+L'ajout de cette ligne est suffisante pour obtenir des rapports DMARC par les autres MTA (si tenté qu'ils aient DMARC correctement configuré pour le faire) et faire appliquer les politiques précisées, à savoir :
+
+- `p=reject` : Rejet des messages qui ne respectent pas la politique, parmi `none`, `quarantine`, `reject` (on peut préciser également le champ `sp` pour les sous-domaines);
+- `rua` : adresse à laquelle envoyer les rapports aggrégés DMARC (il existe également `ruf`, pour l'envoi de rapports détaillés/forensic, auquel il faut préciser le champ `fo` qui détermine dans quel cas envoyer un `ruf`);
+- `pct` : Pourcentage de message sur lesquels appliquer la politique DMARC;
+- `adkim` : Cohérence entre le domaine DKIM (champ signé `d=`) et le domaine du champ `From` du message (`r`=relax, accepte l'ensemble du domaine organisationnel, ou `s`=strict)
+- `aspf` : Cohérence entre le domaine SPF (i.e. le champ `from` SMTP) et le domaine du champ `From` du message. 
+
+#### Package OpenDMARC
+
+##### Installation sur le MDA
+Le package *OpenDMARC* a 2 fonctions:
+
+1. Application de la politique DMARC définie par le domaine émetteur, notamment contrôle de l'alignement des noms de domaine (`From` SMTP / `From` headers / `d=` DKIM), permettant une uniformisation des contrôles SPF et DKIM et la définition d'une politique par le domaine émetteur ;
+2. Génération de rapports d'activité (envoyés à `rua` émetteur défini dans l'enregistrement DNS de DMARC) et de rapports détaillés (forensic, envoyés à `ruf` émetteur défini dans l'enregistrement DNS de DMARC), permettant une rétroaction sur les abus d'usage d'un nom de domaine.
+
+> e.g., Paypal ou Facebook ont une politique DMARC de rejet systématique des abus.
+
+L'installation se fait via le gestionnaire de package:
+```bash
+sudo apt install opendmarc
+```
+
+> **NB:** Dans un premier temps, il n'est pas nécessaire d'installer la base de données de opendmarc avec dbconfig-common.
+  Cette dernière sert pour la génération des rapports `rua` et `ruf`, qui dans le cas de notre plateforme n'ont qu'un intérêt limité.
+
+##### Configuration
+
+1. Dans le fichier de configuration de OpenDMARC (`/etc/opendmarc.conf`), modifier les configurations suivantes:
+
+  Clé | Valeur | Commentaire
+  ---|---|---
+  `AuthservID` | `OpenDMARC` |Conseillé par souci de lisibilité et pour éviter des incompatibilités entre services
+  `RejectFailures` | `true` | Parce qu'il n'y a aucun intérêt à mettre une politique de filtrage si on ne l'applique pas (et c'est pourtant ce qui est fait par défaut...)
+  `Socket` | `inet:8892@localhost`| Pour l'utilisation avec postfix
+  `RequiredHeaders`|`true`|Rejette les emails dont les headers ne sont pas conformes à la RFC 5322.
+  `SPFSelfValidate`| `true`|Bretelles + ceinture: si DMARC ne trouve pas de résultat SPF, effectue lui-même le check SPF.
+  `IgnoreHosts`|`/etc/opendmarc-ignorehosts.conf`|Ignorer DMARC pour les messages sortants...
+
+2. Créer le fichier avec le réseau local à ignorer:
+
+  ```bash
+  cat <<EOF | sudo tee /etc/opendmarc-ignorehosts.conf
+  192.168.$(hostname -A |cut -b12).0/24
+  EOF
+  ```
+
+##### Intégration à Postfix
+
+1. On modifie les lignes suivantes sur la conf postfix (`/etc/postfix/main.cf`) :
+
+  Clé | Valeur | Commentaire
+  ---|---|---
+  `milter_default_action`|`accept`| Normalement déja fait avec OpenDKIM
+  `smtpd_milters` | `inet:localhost:8892` | Il y a déja le socket de OpenDKIM, **ajouter** la valeur séparée d'un espace pour opendmarc
+  `non_smtpd_milters` | `$smtpd_milters` | Normalement déja fait avec OpenDKIM
+
+2. Puis relancer OpenDMARC (`sudo systemctl restart opendmarc`) et recharger la configuration *Postfix* (`sudo postfix reload`).
+
+#### Test OpenDMARC
+
+Envoyer un mail vers le domaine de réception, on doit voir apparaitre dans les headers `Authentication-Results: OpenDMARC; dmarc=pass [...]`.
+
+# Tests authentification Mails via les protocoles de sécurité
+
+Nom du test identifié à partir de 3 caractères ordonnés (C=cohérent, I=incohérent), correspondant aux 3 champs :
+1. Champ `Mail from` du SMTP (enveloppe)
+2. Champ `From :` du corps de données
+3. Champ `d=<domain>` de DKIM
+
+Test | Postfix | SPF | DKIM | DMARC | Détails
+:---|:---:|:---:|:---:|:---:|:---
+CCC | OK | Pass | Pass | Pass | Tout est nominal
+
+## Protocle de test
+
+### Envoi de message
+Pour cela on exécute la commande suivante:
+
+```bash
+cat <<EOF | telnet mail.domain1.loc 25
+EHLO mail.domain1.loc
+AUTH PLAIN $(echo -ne "\0$(hostname)\0$(hostname)"|base64)
+MAIL FROM: alice@domain1.loc
+RCPT TO: bob@domain2.loc
+DATA
+From: Alice <alice@domain1.loc>
+To: Bob <bob@domain2.loc>
+Date: $(date)
+Subject: Test
+Test automatisation telnet
+.
+QUIT
+EOF
+```
+
+Il est nécessaire de faire une authentification en amont avant l'envoi du message pour avoir la signatue DKIM. Le format d'authentification se fait via la commande `echo -ne "\0username\0password" | base64`. C'est horrible! On envoie l'auth en clair sur le réseau, simplement encodé en B64!!!
+
+### Test multi-envoi:
+
+On fait 2 boucles imbriquées afin de parcourir toutes les valeurs possibles (2 valeurs à chaque fois).
+```bash
+for smtpfrom in "C|alice@domain1.loc" "I|alice@otherdomain.loc";do
+for datafrom in "C|alice@domain1.loc" "I|alice@otherdomain.loc";do
+cat <<EOF | telnet mail.domain1.loc 25
+EHLO mail.domain1.loc
+AUTH PLAIN $(echo -ne "\0$(hostname)\0$(hostname)"|base64)
+MAIL FROM: $(echo ${smtpfrom} | cut -f2 -d"|")
+RCPT TO: bob@domain2.loc
+DATA
+From: Alice <$(echo ${datafrom} | cut -f2 -d"|")>
+To: Bob <bob@domain2.loc>
+Date: $(date)
+Subject: Test $(echo ${smtpfrom} | cut -f1 -d"|")$(echo ${datafrom} | cut -f1 -d"|")
+SmtpFrom=${smtpfrom}
+DataFrom=${datafrom}
+.
+QUIT
+EOF
+done
+done
+```
+
+### Plugin Thunderbird
+
+Installer le plug-in auth.xpi.
+
+### Ajout de la prise en compte du protocole ARC (OpenARC, expérimental)
+
+#### Installation du package OpenARC
+
+Le package est à cette date expérimental sous debian depuis 2021, et a des dépendances dans les repo `unstable`, donc il est nécessaire d'ajouter les dépôts idoines.
+
+```bash
+cat << EOF| sudo tee /etc/apt/sources.list.d/openarc.list
+deb http://deb.debian.org/debian/ experimental main
+deb http://deb.debian.org/debian/ unstable main
+EOF
+sudo apt update && sudo apt -t experimental install openarc
+```
 
 
+> **NB :** A l'issue, je vous conseille de supprimer le fichier `/etc/apt/sources.list.d/openarc.list` pour éviter un upgrade sur des paquets `unstable`.
+  **NB du NB:** les repos `testing`, `unstable` et `experimental` n'ont pas de suivi de MCS.
+
+#### Configuration de OpenARC
+
+1. Editer le fichier `/etc/openarc.conf` avec les paramètres suivants:
+
+  Clé|Valeur|Commentaire
+  ---|---|---
+  `Syslog`|`yes`|
+  `Mode`|`sv`|
+  `Domain`|`domainX.loc`|Nom de domaine à adapter
+  `Selector`|`mail`|Sélecteur pour les clés DKIM
+  `KeyFile`|`/etc/openarc/mail.private`|
+  `Socket`|`inet:8893@localhost`|Du fait du jail de `chroot` sous debian, il est plus simple de passer par une interface réseau plutôt qu'une socket
+
+  > Remplacer les X par la valeur correspondante (`hostname -A | cut -b12`).
+
+1. Copier dans un dossier openarc les clés d'opendkim avec 
+  ```bash
+  sudo cp -r /etc/dkimkeys /etc/openarc
+  sudo chown openarc:openarc /etc/openarc
+  sudo systemctl restart openarc
+  ```
+
+##### Connexion avec Postfix
+
+Il s'agit maintenant d'ajouter OpenDKIM au serveur MTA *Postfix*.
+
+1. On modifie la configuration postfix dans `main.cf` en ajoutant :
+
+  Clé|Valeur|Remarque
+  ---|---|---
+  `smtpd_milters`|`inet:localhost:8893`|Connexion avec le résolveur d'OpenARC
+
+1. Puis recharger la configuration *Postfix* avec la commande `sudo postfix reload`.
+
+
+
+
+
+> TODO:
+  - Installer mailutils sur les clients
+  - Envoyer des messages via la commande mail (contenu formatté / automatisation)
